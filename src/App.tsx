@@ -347,6 +347,7 @@ export default function App() {
     return u.href;
   }
   function enter(c: string) {
+    codeRef.current = c;
     localStorage.setItem("vk-room", c);
     localStorage.setItem("vk-name", name.trim());
     setGame(null);
@@ -413,6 +414,7 @@ export default function App() {
     }
   }
   function home() {
+    codeRef.current = "";
     setCode("");
     setGame(null);
     setPanel(null);
