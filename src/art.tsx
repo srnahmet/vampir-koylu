@@ -4,9 +4,11 @@ import type { Role } from "./game";
 export function Sprite({
   role = "villager",
   className = "",
+  neutral = false,
 }: {
   role?: Role;
   className?: string;
+  neutral?: boolean;
 }) {
   const clothes = {
     villager: "#d49b50",
@@ -21,12 +23,14 @@ export function Sprite({
       shapeRendering="crispEdges"
       role="img"
       aria-label={
-        {
-          villager: "Köylü",
-          vampire: "Vampir",
-          doctor: "Doktor",
-          jester: "Şarlatan",
-        }[role]
+        neutral
+          ? "Köy sakini"
+          : {
+              villager: "Köylü",
+              vampire: "Vampir",
+              doctor: "Doktor",
+              jester: "Şarlatan",
+            }[role]
       }
     >
       <ellipse cx="16" cy="37" rx="12" ry="2" fill="#36314a" opacity=".13" />
@@ -68,7 +72,7 @@ export function Sprite({
           <path d="M10 25H23L16 30Z" fill="#ecd790" />
         </>
       )}
-      {role === "villager" && (
+      {role === "villager" && !neutral && (
         <>
           <path d="M3 8H29V11H3M8 3H24V8H8" fill="#e5bc6c" />
           <path d="M8 7H24V9H8" fill="#b48243" />

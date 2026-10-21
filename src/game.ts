@@ -9,6 +9,8 @@ export type Settings = {
   doctor: boolean;
   jester: boolean;
   theme: Theme;
+  host_plays: boolean;
+  turn_based: boolean;
 };
 export const defaults: Settings = {
   day_seconds: 300,
@@ -18,6 +20,8 @@ export const defaults: Settings = {
   doctor: false,
   jester: false,
   theme: "classic",
+  host_plays: true,
+  turn_based: false,
 };
 export type Player = {
   id: string;
@@ -39,8 +43,18 @@ export type Game = {
   server_now: string;
   settings: Settings;
   is_host: boolean;
+  is_observer: boolean;
   players: Player[];
-  me: Player;
+  me: Player | null;
+  speech: {
+    order: string[];
+    turn_index: number;
+    round: number;
+    speaker_id: string | null;
+    ends_at: string | null;
+    slot_ms: number;
+    group: boolean;
+  } | null;
   my_turn: boolean;
   has_chosen: boolean;
   my_vote: string | null;

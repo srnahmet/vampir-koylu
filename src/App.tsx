@@ -21,6 +21,8 @@ import {
   LoaderCircle,
   LockKeyhole,
   Moon,
+  Monitor,
+  MessagesSquare,
   Palette,
   Play,
   Plus,
@@ -48,6 +50,9 @@ import {
   type Theme,
 } from "./game";
 import { Sprite, Village } from "./art";
+import { EventScene } from "./EventScene";
+import { SpeechPanel } from "./SpeechPanel";
+import { EarlyAdvance } from "./EarlyAdvance";
 
 type Panel = "create" | "join" | "rules" | "theme" | "role" | null;
 function Modal({
@@ -148,15 +153,20 @@ function RoleInfo({ role }: { role: Role }) {
 function Rules() {
   return (
     <div className="rules-content">
-      <p>Herkes oyuncu. Moderatör yok, şüphe çok.</p>
+      <p>
+        Moderatör yok, şüphe çok. Masayı kuran kişi ister oynar, ister ortak
+        ekranı yönetir.
+      </p>
       <ol>
         <li>
           <strong>Masaya toplanın.</strong> 4–24 kişi katılır. Herkese sabit bir
-          numara ve gizli bir rol verilir.
+          numara ve gizli bir rol verilir. Oyuna katılmayan masa sahibi numara
+          veya rol almaz; oyuncu sayısına katılmaz.
         </li>
         <li>
           <strong>Önce sohbet.</strong> İlk konuşma bittiğinde gece başlar. İlk
-          gün idam yoktur.
+          gün idam yoktur. Yaşayanların yarısından fazlası “Geceye geçelim”
+          derse ilk konuşma erken biter.
         </li>
         <li>
           <strong>Gece sessizlik.</strong> Vampir hedefini, varsa doktor
@@ -166,6 +176,12 @@ function Rules() {
         <li>
           <strong>Gündüz şüphe.</strong> Konuşma süresi dolunca oylama açılır.
           Yaşayanların yarısından fazlası isterse erkenden açılır.
+        </li>
+        <li>
+          <strong>Herkese iki söz.</strong> Sıra bazlı konuşma açıksa her gündüz
+          rastgele sırayla iki tur konuşulur. Konuşmacı “Sözümü bitirdim”
+          diyebilir; süre dolunca sıra otomatik geçer. Ardından kalan süre
+          serbest sohbettir.
         </li>
         <li>
           <strong>Tek oy, kesin karar.</strong> Kendine oy veremezsin. Oyun
@@ -234,7 +250,13 @@ export default function App() {
     const data = await rpc<Game>("vk_state", { p_code: code });
     if (codeRef.current !== code) return;
     setGame((prev) =>
-      prev && prev.code === data.code && prev.seq > data.seq ? prev : data,
+      prev &&
+      prev.code === data.code &&
+      (prev.seq > data.seq ||
+        (prev.seq === data.seq &&
+          (prev.speech?.turn_index || 0) > (data.speech?.turn_index || 0)))
+        ? prev
+        : data,
     );
     setOffset(Date.parse(data.server_now) - (start + Date.now()) / 2);
     setConnectionError("");
@@ -342,7 +364,10 @@ export default function App() {
     try {
       await session();
       const c = create
-        ? await rpc<string>("vk_create", { p_name: name, p_settings: cfg })
+        ? await rpc<string>("vk_create", {
+            p_name: cfg.host_plays ? name : "",
+            p_settings: cfg,
+          })
         : await rpc<string>("vk_join", { p_name: name, p_code: roomInput });
       enter(c);
     } catch (e) {
@@ -357,6 +382,12 @@ export default function App() {
     setError("");
     try {
       if (action === "start") await rpc("vk_start", { p_code: code });
+      else if (action === "speak")
+        await rpc("vk_speak", {
+          p_code: code,
+          p_seq: game.seq,
+          p_turn: game.speech?.turn_index,
+        });
       else
         await rpc("vk_act", {
           p_code: code,
@@ -404,15 +435,15 @@ export default function App() {
   const needed = Math.floor(alive.length / 2) + 1;
   const canChoose =
     !!game &&
-    game.me.alive &&
+    game.me?.alive &&
     ((game.phase === "voting" && !game.my_vote) ||
       (game.phase === "night" && game.my_turn && !game.has_chosen));
   const allowed = (p: Player) =>
     p.alive &&
-    (game?.phase === "night" && game.me.role === "doctor"
-      ? p.id !== game.me.id || !game.me.self_heal_used
-      : p.id !== game?.me.id);
-  const currentRole = game?.me.role || "villager";
+    (game?.phase === "night" && game.me?.role === "doctor"
+      ? p.id !== game.me?.id || !game.me?.self_heal_used
+      : p.id !== game?.me?.id);
+  const currentRole = game?.me?.role || "villager";
   const phaseText: Record<string, string> = {
     lobby: "Ateşin etrafında toplanıyoruz",
     dealing: "Kader kartların karılıyor…",
@@ -434,6 +465,12 @@ export default function App() {
   return (
     <>
       <div className="app-shell">
+        <div className="co-production" aria-label="GISM ve SPTLS ortak yapımı">
+          <strong>GISM</strong>
+          <span aria-hidden="true">🤝</span>
+          <strong>SPTLS</strong>
+          <span>ortak yapımı</span>
+        </div>
         <header className="site-header">
           <button
             className="brand"
@@ -649,14 +686,30 @@ export default function App() {
               <span className="pill">
                 MASA <strong>{game.code}</strong>
               </span>
-              <button
-                className="text-button"
-                onClick={() => open("role")}
-                disabled={game.phase === "lobby"}
-              >
-                <Eye size={17} /> Rolüm
-              </button>
+              {game.is_observer ? (
+                <span className="observer-badge">
+                  <Monitor size={15} /> Paylaşım ekranı
+                </span>
+              ) : (
+                <button
+                  className="text-button"
+                  onClick={() => open("role")}
+                  disabled={game.phase === "lobby"}
+                >
+                  <Eye size={17} /> Rolüm
+                </button>
+              )}
             </div>
+            {game.is_observer && (
+              <div className="observer-notice">
+                <Monitor size={18} />
+                <span>
+                  <strong>Masayı yönetiyorsun.</strong> Oyuncu değilsin; bu
+                  ekran gizli rolleri ve gece hedeflerini göstermez. Ekranını
+                  paylaşabilirsin.
+                </span>
+              </div>
+            )}
             {connectionError && (
               <div className="error connection" role="status">
                 <WifiOff size={18} />
@@ -680,6 +733,13 @@ export default function App() {
                 />
               )}
             </div>
+            {["intro", "day", "runoff"].includes(game.phase) && (
+              <EarlyAdvance
+                game={game}
+                busy={busy}
+                onRequest={() => act("early")}
+              />
+            )}
             {game.phase === "lobby" ? (
               <div className="lobby-layout">
                 <section className="paper-card invite-card">
@@ -725,12 +785,22 @@ export default function App() {
                     </span>
                   </div>
                   <div className="player-list">
+                    {game.players.length === 0 && (
+                      <div className="empty-village">
+                        <Users size={28} />
+                        <p>
+                          Henüz kimse gelmedi.
+                          <br />
+                          Davet linkini gönder, köy dolsun!
+                        </p>
+                      </div>
+                    )}
                     {game.players.map((p) => (
                       <div className="lobby-player" key={p.id}>
                         <span className="number-badge">{p.number}</span>
                         <span className="player-name">
                           {p.name}
-                          {p.id === game.me.id && <small> (sen)</small>}
+                          {p.id === game.me?.id && <small> (sen)</small>}
                         </span>
                         <span className={`presence ${p.online ? "" : "away"}`}>
                           {p.online ? "Hazır" : "Bağlantı bekleniyor"}
@@ -739,6 +809,11 @@ export default function App() {
                     ))}
                   </div>
                   <div className="lobby-settings">
+                    {game.settings.turn_based && (
+                      <span>
+                        <MessagesSquare size={15} /> Sıra bazlı konuşma · 2 tur
+                      </span>
+                    )}
                     <span>
                       <Clock size={15} />
                       {game.settings.day_seconds} sn gündüz
@@ -776,60 +851,93 @@ export default function App() {
                     </div>
                   )}
                   <p className="small muted center">
-                    Sen #{game.me.number} numaralı oyuncusun. Numaran oyun
-                    boyunca değişmez.
+                    {game.is_observer ? (
+                      "Sen masa sahibisin. En az 4 oyuncu katılınca oyunu başlatabilirsin."
+                    ) : (
+                      <>
+                        Sen #{game.me?.number} numaralı oyuncusun. Numaran oyun
+                        boyunca değişmez.
+                      </>
+                    )}
                   </p>
                 </section>
               </div>
             ) : (
               <>
                 {game.phase === "dealing" || game.phase === "countdown" ? (
-                  <section className="paper-card reveal-stage">
-                    <div className="deal-cards">
-                      <span />
-                      <span />
-                      <span>
-                        <Sprite role={currentRole} />
+                  game.is_observer ? (
+                    <section className="paper-card reveal-stage public-reveal">
+                      <EventScene kind="roles" />
+                      <span className="eyebrow">
+                        HERKESİN SIRRI KENDİ TELEFONUNDA
                       </span>
-                    </div>
-                    <span className="eyebrow">
-                      #{game.me.number} · {game.me.name}
-                    </span>
-                    <h2>
-                      {game.phase === "dealing"
-                        ? "Senin sırrın:"
-                        : "Birazdan başlıyoruz"}
-                    </h2>
-                    {game.phase === "dealing" ? (
-                      <>
-                        <h3 className="revealed-role">
-                          {roles[currentRole].name}
-                        </h3>
-                        <p>{roles[currentRole].description}</p>
-                        <p className="small muted">{roles[currentRole].win}</p>
-                      </>
-                    ) : (
-                      <Countdown ends={game.ends_at} offset={offset} />
-                    )}
-                    <span className="small muted">
-                      <EyeOff size={14} /> Ekranını diğer oyunculardan gizle.
-                    </span>
-                  </section>
+                      <h2>
+                        {game.phase === "dealing"
+                          ? "Roller oyunculara dağıtılıyor."
+                          : "Köy birazdan uyanıyor!"}
+                      </h2>
+                      {game.phase === "countdown" ? (
+                        <Countdown ends={game.ends_at} offset={offset} />
+                      ) : (
+                        <p>
+                          Bu ekranda rol açılmaz. Oyuncular kendi ekranlarına
+                          baksın; birazdan hep birlikte başlayacaksınız.
+                        </p>
+                      )}
+                    </section>
+                  ) : (
+                    <section className="paper-card reveal-stage">
+                      <div className="deal-cards">
+                        <span />
+                        <span />
+                        <span>
+                          <Sprite role={currentRole} />
+                        </span>
+                      </div>
+                      <span className="eyebrow">
+                        #{game.me?.number} · {game.me?.name}
+                      </span>
+                      <h2>
+                        {game.phase === "dealing"
+                          ? "Senin sırrın:"
+                          : "Birazdan başlıyoruz"}
+                      </h2>
+                      {game.phase === "dealing" ? (
+                        <>
+                          <h3 className="revealed-role">
+                            {roles[currentRole].name}
+                          </h3>
+                          <p>{roles[currentRole].description}</p>
+                          <p className="small muted">
+                            {roles[currentRole].win}
+                          </p>
+                        </>
+                      ) : (
+                        <Countdown ends={game.ends_at} offset={offset} />
+                      )}
+                      <span className="small muted">
+                        <EyeOff size={14} /> Ekranını diğer oyunculardan gizle.
+                      </span>
+                    </section>
+                  )
                 ) : game.phase === "finished" ? (
                   <section className="paper-card final-stage">
                     <span className="eyebrow">
-                      {didWin ? "KAZANDIN!" : "BU TUR OLMADI…"}
+                      {game.is_observer
+                        ? "KÖYÜN HİKÂYESİ TAMAMLANDI"
+                        : didWin
+                          ? "KAZANDIN!"
+                          : "BU TUR OLMADI…"}
                     </span>
-                    <div className="winner-art">
-                      <Sprite
-                        role={
-                          game.winner === "village"
-                            ? "villager"
-                            : (game.winner as Role)
-                        }
-                      />
-                      <Sparkles size={34} />
-                    </div>
+                    <EventScene
+                      kind={
+                        game.winner === "village"
+                          ? "village_win"
+                          : game.winner === "jester"
+                            ? "jester_win"
+                            : "vampire_win"
+                      }
+                    />
                     <h2>
                       {game.winner === "village"
                         ? "Köy huzura kavuştu!"
@@ -872,20 +980,24 @@ export default function App() {
                       {game.phase === "night_result" ||
                       game.phase === "execution" ? (
                         <div className="announcement" aria-live="polite">
-                          <div className="announcement-icon">
-                            {game.phase === "night_result" ? (
-                              <Sun size={48} />
-                            ) : (
-                              <Users size={48} />
-                            )}
-                          </div>
+                          <EventScene
+                            kind={
+                              game.announcement?.kind === "saved"
+                                ? "saved"
+                                : game.phase === "execution"
+                                  ? "execution"
+                                  : "night_death"
+                            }
+                          />
                           <h2>{game.announcement?.text}</h2>
                           <p>
-                            {!game.me.alive &&
-                            game.me.eliminated_by === "vampire"
+                            {!!game.me &&
+                            !game.me.alive &&
+                            game.me?.eliminated_by === "vampire"
                               ? "Vampir tarafından öldürüldün. Artık oyunu izleyebilirsin."
-                              : !game.me.alive &&
-                                  game.me.eliminated_by === "village"
+                              : !!game.me &&
+                                  !game.me.alive &&
+                                  game.me?.eliminated_by === "village"
                                 ? "Köyün kararıyla idam edildin. Artık oyunu izleyebilirsin."
                                 : "Birazdan köy yeniden hareketlenecek."}
                           </p>
@@ -907,11 +1019,11 @@ export default function App() {
                               ? game.has_chosen
                                 ? "Seçimin kaydedildi. Gece tamamlanınca sonuç açıklanacak."
                                 : currentRole === "doctor"
-                                  ? `Vampirin hedefini bilmiyorsun. ${game.me.self_heal_used ? "Kendini koruma hakkını kullandın." : "Kendini bir kez koruyabilirsin."}`
+                                  ? `Vampirin hedefini bilmiyorsun. ${game.me?.self_heal_used ? "Kendini koruma hakkını kullandın." : "Kendini bir kez koruyabilirsin."}`
                                   : "Hayatta olan başka bir oyuncuyu seç. Kimliğin gizli kalacak."
                               : "Gece devam ediyor. Seçimler tamamlandığında güneş doğacak."}
                           </p>
-                          {!canChoose && <Village night compact />}
+                          <EventScene kind="night" small />
                           {Date.now() + offset > Date.parse(game.ends_at) && (
                             <div className="waiting-box">
                               <Clock size={17} /> Henüz tüm seçimler yapılmadı.
@@ -921,12 +1033,19 @@ export default function App() {
                         </>
                       ) : game.phase === "voting" ? (
                         <>
+                          <EventScene kind="voting" small />
                           <span className="eyebrow">SÖZ SIRASI OYLARDA</span>
-                          <h2>Vampir olduğundan şüphelendiğin kişiyi seç.</h2>
+                          <h2>
+                            {game.is_observer
+                              ? "Oyuncular kararlarını veriyor."
+                              : "Vampir olduğundan şüphelendiğin kişiyi seç."}
+                          </h2>
                           <p className="stage-description">
-                            {game.my_vote
-                              ? "Oyun kaydedildi ve değiştirilemez. Artık güncel oyları görebilirsin."
-                              : `İdam için en az ${needed} oy gerekli. Oy verdikten sonra sayıları görebilirsin.`}
+                            {game.is_observer
+                              ? `İdam için en az ${needed} oy gerekli. Bu ekranda yalnızca oylamanın ilerleyişi gösterilir.`
+                              : game.my_vote
+                                ? "Oyun kaydedildi ve değiştirilemez. Artık güncel oyları görebilirsin."
+                                : `İdam için en az ${needed} oy gerekli. Oy verdikten sonra sayıları görebilirsin.`}
                           </p>
                           <div className="vote-progress">
                             <span>
@@ -944,7 +1063,16 @@ export default function App() {
                         </>
                       ) : (
                         <>
-                          <Village compact />
+                          {game.speech ? (
+                            <SpeechPanel
+                              game={game}
+                              offset={offset}
+                              busy={busy}
+                              onFinish={() => act("speak")}
+                            />
+                          ) : (
+                            <EventScene kind="discussion" small />
+                          )}
                           <h2>
                             {game.phase === "intro"
                               ? "Herkesi tanı. Bahaneleri not et."
@@ -959,33 +1087,6 @@ export default function App() {
                                 ? game.announcement?.text
                                 : "İpuçlarını birleştirin. Süre bitince oylama açılacak; çoğunluk isterse hemen başlayabilirsiniz."}
                           </p>
-                          {game.phase === "day" && (
-                            <>
-                              <button
-                                className="button secondary full"
-                                disabled={
-                                  !game.me.alive || game.early_mine || busy
-                                }
-                                onClick={() => act("early")}
-                              >
-                                {game.early_mine ? (
-                                  <Check size={18} />
-                                ) : (
-                                  <Users size={18} />
-                                )}{" "}
-                                {game.early_mine
-                                  ? "Oylama isteğin kaydedildi"
-                                  : "Oylamaya geçelim"}{" "}
-                                <span className="vote-count">
-                                  {game.early_count}/{needed}
-                                </span>
-                              </button>
-                              <p className="small muted center">
-                                Başlatmak için yaşayanların yarısından fazlası
-                                istemeli.
-                              </p>
-                            </>
-                          )}
                         </>
                       )}
                       {canChoose && (
@@ -1000,7 +1101,7 @@ export default function App() {
                               >
                                 <span className="number-badge">{p.number}</span>
                                 <strong>{p.name}</strong>
-                                {p.id === game.me.id && <small>Sen</small>}
+                                {p.id === game.me?.id && <small>Sen</small>}
                                 {selected === p.id && <Check size={16} />}
                               </button>
                             ))}
@@ -1054,11 +1155,11 @@ export default function App() {
                           ))}
                         </div>
                       )}
-                      {!game.me.alive && (
+                      {!!game.me && !game.me.alive && (
                         <div className="spectator">
                           <Eye size={18} />
                           <span>
-                            {game.me.eliminated_by === "vampire"
+                            {game.me?.eliminated_by === "vampire"
                               ? "Vampir tarafından öldürüldün."
                               : "Köyün kararıyla idam edildin."}{" "}
                             İzleyici olarak köyü takip edebilirsin; rolünü gizli
@@ -1082,7 +1183,7 @@ export default function App() {
                           <span className="number-badge">{p.number}</span>
                           <span>
                             {p.name}
-                            {p.id === game.me.id && <small> (sen)</small>}
+                            {p.id === game.me?.id && <small> (sen)</small>}
                           </span>
                           {p.alive ? (
                             <span
@@ -1094,22 +1195,33 @@ export default function App() {
                           )}
                         </div>
                       ))}
-                      <div className="my-identity">
-                        <Shield size={18} />
-                        <span>
-                          Sen:{" "}
-                          <strong>
-                            #{game.me.number} {game.me.name}
-                          </strong>
-                        </span>
-                        <button
-                          className="icon-button"
-                          onClick={() => open("role")}
-                          aria-label="Gizli rolümü göster"
-                        >
-                          <Eye size={18} />
-                        </button>
-                      </div>
+                      {game.me ? (
+                        <div className="my-identity">
+                          <Shield size={18} />
+                          <span>
+                            Sen:{" "}
+                            <strong>
+                              #{game.me.number} {game.me.name}
+                            </strong>
+                          </span>
+                          <button
+                            className="icon-button"
+                            onClick={() => open("role")}
+                            aria-label="Gizli rolümü göster"
+                          >
+                            <Eye size={18} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="my-identity observer-identity">
+                          <Monitor size={18} />
+                          <span>
+                            Masayı yönetiyorsun.
+                            <br />
+                            Gizli rolün veya oyun numaran yok.
+                          </span>
+                        </div>
+                      )}
                     </aside>
                   </div>
                 )}
@@ -1162,18 +1274,57 @@ export default function App() {
             <p className="modal-subtitle">
               Arkadaşları çağır. Gerisini köy halleder.
             </p>
-            <label className="field">
-              Sana ne diyelim?
-              <input
-                autoFocus
-                required
-                maxLength={20}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Köydeki adın"
-                autoComplete="nickname"
-              />
-            </label>
+            <fieldset className="host-mode">
+              <legend>Masada nasıl yer alacaksın?</legend>
+              <div
+                className="host-mode-options"
+                role="radiogroup"
+                aria-label="Kurucunun katılımı"
+              >
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={cfg.host_plays}
+                  className={cfg.host_plays ? "active" : ""}
+                  onClick={() => setCfg({ ...cfg, host_plays: true })}
+                >
+                  <Users size={21} />
+                  <strong>Ben de oynayacağım</strong>
+                  <span>Bir numara ve gizli rol al.</span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={!cfg.host_plays}
+                  className={!cfg.host_plays ? "active" : ""}
+                  onClick={() => setCfg({ ...cfg, host_plays: false })}
+                >
+                  <Monitor size={21} />
+                  <strong>Yalnızca masayı yönet</strong>
+                  <span>Rol alma. Ekranını güvenle paylaş.</span>
+                </button>
+              </div>
+            </fieldset>
+            {cfg.host_plays && (
+              <label className="field">
+                Sana ne diyelim?
+                <input
+                  autoFocus
+                  required
+                  maxLength={20}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Köydeki adın"
+                  autoComplete="nickname"
+                />
+              </label>
+            )}
+            {!cfg.host_plays && (
+              <p className="share-hint">
+                <Monitor size={15} /> İsim girmen gerekmez. Oyuncu sayısına
+                katılmazsın; yalnızca oyunu başlatır ve akışı izlersin.
+              </p>
+            )}
             <div className="form-section">
               <div className="section-top">
                 <h3>Biraz daha renk katalım</h3>
@@ -1201,6 +1352,37 @@ export default function App() {
                   <span className="switch" />
                 </label>
               ))}
+            </div>
+            <div className="form-section">
+              <h3>Herkesin sesi duyulsun</h3>
+              <label className="role-toggle speaking-toggle">
+                <span className="feature-symbol">
+                  <MessagesSquare size={22} />
+                </span>
+                <span>
+                  <strong>Sıra bazlı konuşma</strong>
+                  <small>
+                    Rastgele sıra, iki tur, ardından serbest sohbet.
+                  </small>
+                </span>
+                <input
+                  type="checkbox"
+                  aria-label="Sıra bazlı konuşma"
+                  checked={cfg.turn_based}
+                  onChange={(e) =>
+                    setCfg({ ...cfg, turn_based: e.target.checked })
+                  }
+                />
+                <span className="switch" />
+              </label>
+              {cfg.turn_based && (
+                <p className="small muted">
+                  Gündüzün yaklaşık üçte ikisi iki konuşma turuna ayrılır.
+                  Konuşmacı erken bitirebilir; süre dolunca sıra otomatik geçer.
+                  Kalan süre serbest sohbettir. Kalabalık masalarda gündüzü
+                  uzatabilirsin.
+                </p>
+              )}
             </div>
             <details className="settings-details" open>
               <summary>
@@ -1302,7 +1484,7 @@ export default function App() {
               </p>
             )}
             <button
-              disabled={busy || !name.trim()}
+              disabled={busy || (cfg.host_plays && !name.trim())}
               className="button primary full"
               type="submit"
             >
@@ -1314,7 +1496,9 @@ export default function App() {
               Masayı oluştur <ArrowRight size={18} />
             </button>
             <p className="small muted center">
-              Moderatör yok. Masayı kuran kişi de oyuncu.
+              {cfg.host_plays
+                ? "Moderatör yok. Sen de köyün bir oyuncususun."
+                : "Ortak ekran hazır. Gizli roller sadece oyuncuların telefonlarında."}
             </p>
           </form>
         </Modal>
@@ -1425,9 +1609,9 @@ export default function App() {
           )}
         </Modal>
       )}
-      {panel === "role" && game && (
+      {panel === "role" && game?.me && (
         <Modal
-          title={`Sadece sana, #${game.me.number}`}
+          title={`Sadece sana, #${game.me?.number}`}
           onClose={() => setPanel(null)}
         >
           <RoleInfo role={currentRole} />

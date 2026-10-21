@@ -2,6 +2,18 @@
 
 Moderatörsüz, aynı masada herkesin kendi telefonundan oynadığı Türkçe parti oyunu. Piksel köyü, yumuşak gündüz/gece geçişleri, dört renk paketi, QR kodla katılım ve gizli roller.
 
+GISM 🤝 SPTLS ortak yapımı.
+
+## Paylaşım ekranı ve konuşma sırası
+
+Masa kurarken **Ben de oynayacağım** veya **Yalnızca masayı yönet** seçilir. İkinci seçenekte isim istenmez; kurucuya oyuncu kaydı, numara veya rol verilmez. Masa sahibi oyunu başlatıp ortak akışı izler. Ekranında özel rol kartı, gece hedefi veya oylama sırasında gizli oy sayıları bulunmaz. Oyun bitince açıklanan roller herkes için ortaktır. Başlamak için kurucu hariç en az 4 gerçek oyuncu gerekir.
+
+İlk konuşmada **Geceye geçelim**, sonraki gündüz ve ek tartışmada **Oylamaya geçelim** düğmesi bulunur. İstekler geri sayımın hemen altında görünür; yaşayanların salt çoğunluğu oluşunca geçilir. İzleyici kurucu bu isteklere oy veremez. Gece ve oylama asgari süreleri atlanamaz.
+
+**Sıra bazlı konuşma** açıldığında her gündüz yaşayan oyuncular için yeni bir rastgele sıra oluşturulur. Aynı sıra iki tur döner. Toplam gündüz süresinin yaklaşık üçte ikisi bu iki tura eşit bölünür; kalan süre serbest tartışmadır. Konuşmacı **Sözümü bitirdim** ile erken geçebilir, süre dolunca otomatik geçilir. İki tur tamamlanınca **Şimdi söz hepinizde!** görünür. Konuşma sırası veritabanında tutulur; bütün ekranlar aynı konuşmacıyı görür. Konuşma turları gündüz saatini veya erken geçiş oylarını sıfırlamaz. Kalabalık masalarda gündüz süresini uzatabilirsiniz.
+
+Gece, oylama, ölüm, idam, doktor kurtarışı, rol dağıtımı ve üç kazanma durumu için ayrı SVG piksel sahneleri ve CSS animasyonları vardır. Ölen veya konuşan kişinin özel rolü görselden açığa çıkmaz; nötr köy sakini çizimleri kullanılır. Azaltılmış hareket tercihi animasyonları durdurur.
+
 ## Çalıştırma
 
 Node.js 22 veya 24 ile:
@@ -34,7 +46,7 @@ Settings → Pages → Source: **GitHub Actions**. `main` dalına gönderilen he
 
 - 4–24 oyuncu; tam 1 vampir, isteğe bağlı 1 doktor ve 1 şarlatan, kalanlar köylü. Roller sunucuda rastgele dağıtılır. Numaralar sabit kalır.
 - Roller 7 saniye gösterilir, ardından 5 saniye geri sayım yapılır.
-- İlk konuşmadan sonra ilk gece başlar. İlk konuşmada idam yoktur.
+- İlk konuşmadan sonra ilk gece başlar. İlk konuşmada idam yoktur; yaşayanların salt çoğunluğu ile geceye erken geçilebilir.
 - Sonraki gündüzlerde süre bitince oylama açılır. Yaşayanların yarısından fazlasının isteğiyle erken açılabilir.
 - Çoğunluk = `floor(yaşayan / 2) + 1`. Ölüler oy kullanamaz. Kendine oy yoktur. Kesinleşmiş oy değişmez. Sayılar yalnızca kendi oyunu verenlere görünür.
 - Oylama en az belirlenen süre kadar sürer; ayrıca yaşayan herkesin oy vermesi beklenir. Çoğunluk çıkmazsa ek tartışma başlar, ardından boş oylarla yeni tur açılır.
@@ -52,7 +64,9 @@ Süreler masa kurulurken ayarlanır: gündüz 30–1800 sn (varsayılan 300), he
 
 React + TypeScript + Vite. Fontlar ve tüm görseller projeyle birlikte gelir; harici font servisi veya görsel servisi gerekmez. Karakter ve köy illüstrasyonları SVG'dir. Mobil tarayıcılar için manifest, güvenli alanlar, dokunma hedefleri, klavye erişimi ve azaltılmış hareket desteği bulunur.
 
-Oyun motoru PostgreSQL fonksiyonlarıdır. `vk_private` şeması HTTP API'ye açık değildir. Tablolarda RLS açık, istemcilere doğrudan tablo izni yoktur. Beş dar kapsamlı RPC, oturum kimliğini, masa üyeliğini, rolü, hedefi ve aşamayı kontrol eder. Roller sadece sahibi için döndürülür. Tur kilidi eşzamanlı hamleleri sıraya koyar; aşama numarası eski istekleri reddeder. Zamanı veritabanı belirler. İstemciler 1,8 saniyede bir durumu alır; host telefonuna veya ayrıca zamanlayıcı servisine bağımlılık yoktur.
+Oyun motoru PostgreSQL fonksiyonlarıdır. `vk_private` şeması HTTP API'ye açık değildir. Tablolarda RLS açık, istemcilere doğrudan tablo izni yoktur. Altı dar kapsamlı RPC, oturum kimliğini, masa üyeliğini, rolü, hedefi ve aşamayı kontrol eder. Roller sadece sahibi için döndürülür. İzleyici kurucu için `me` alanı `null` döner. Tur kilidi eşzamanlı hamleleri sıraya koyar; aşama ve konuşma sırası numaraları eski istekleri reddeder. Zamanı veritabanı belirler. İstemciler 1,8 saniyede bir durumu alır; host telefonuna veya ayrıca zamanlayıcı servisine bağımlılık yoktur.
+
+`supabase/setup.sql`, mevcut kurulumu da yükseltir. Sütunları ekler ve fonksiyonları yeniler; mevcut masa ve oyuncuları silmez. Eksik yeni ayarlar eski masalarda varsayılan davranışı korur.
 
 ```sh
 npm test

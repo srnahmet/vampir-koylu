@@ -1,4 +1,4 @@
--- Vampir Köylü v1. Run once in Supabase SQL Editor.
+-- Vampir Köylü v2. Idempotent upgrade: preserves existing rooms and players.
 -- Secrets, roles and ballots live in an unexposed schema. Clients only call RPCs.
 begin;
 create schema if not exists vk_private;
@@ -22,6 +22,12 @@ create table if not exists vk_private.rooms (
  announcement jsonb,
  events jsonb not null default '[]'
 );
+-- Additive migration, safe on v1 databases.
+alter table vk_private.rooms add column if not exists speech_order uuid[] not null default '{}';
+alter table vk_private.rooms add column if not exists speech_turn int not null default 0;
+alter table vk_private.rooms add column if not exists speech_slot_ms int not null default 0;
+alter table vk_private.rooms add column if not exists speech_ends_at timestamptz;
+
 create table if not exists vk_private.players (
  id uuid primary key default gen_random_uuid(),
  room_id uuid not null references vk_private.rooms(id) on delete cascade,
@@ -76,7 +82,8 @@ begin
  end if;
  if t not in ('classic','lavender','forest','peach') then t := 'classic'; end if;
  return jsonb_build_object('day_seconds',d,'night_seconds',n,'vote_seconds',v,'runoff_seconds',e,
-  'doctor',coalesce((raw->>'doctor')::boolean,false),'jester',coalesce((raw->>'jester')::boolean,false),'theme',t);
+  'doctor',coalesce((raw->>'doctor')::boolean,false),'jester',coalesce((raw->>'jester')::boolean,false),'theme',t,
+  'host_plays',coalesce((raw->>'host_plays')::boolean,true),'turn_based',coalesce((raw->>'turn_based')::boolean,false));
 end $$;
 
 -- Room lock serializes joining, dealing, actions and timer transitions.
@@ -84,13 +91,23 @@ end $$;
 create or replace function vk_private.advance(rid uuid) returns void
 language plpgsql security definer set search_path = '' as $$
 declare r vk_private.rooms; alive_count int; votes_count int; needed int;
- target_id uuid; p vk_private.players; night_next boolean := false; dur int;
+ target_id uuid; p vk_private.players; night_next boolean := false; dur int; jumped int;
 begin
  select * into r from vk_private.rooms where id=rid for update;
  if not found or r.phase in ('lobby','finished') then return; end if;
  select count(*) into alive_count from vk_private.players where room_id=rid and alive;
  needed := alive_count/2+1;
- if r.phase='day' then
+ -- Speaking turns share the phase's clock; they never reset ballots or early requests.
+ if r.phase in ('intro','day') and coalesce((r.settings->>'turn_based')::boolean,false)
+    and r.speech_turn < cardinality(r.speech_order)*2 and r.speech_ends_at<=now() then
+  jumped:=least(cardinality(r.speech_order)*2-r.speech_turn,
+   floor(extract(epoch from (now()-r.speech_ends_at))*1000/greatest(r.speech_slot_ms,1))::int+1);
+  r.speech_turn:=r.speech_turn+jumped;
+  r.speech_ends_at:=case when r.speech_turn<cardinality(r.speech_order)*2
+   then r.speech_ends_at+make_interval(secs=>jumped*r.speech_slot_ms/1000.0) else null end;
+  update vk_private.rooms set speech_turn=r.speech_turn,speech_ends_at=r.speech_ends_at where id=rid;
+ end if;
+ if r.phase in ('intro','day','runoff') then
   select count(*) into votes_count from vk_private.early_votes where room_id=rid and seq=r.seq;
   if now()<r.ends_at and votes_count<needed then return; end if;
  elsif now()<r.ends_at then return;
@@ -154,16 +171,26 @@ begin
    dur:=(r.settings->>'night_seconds')::int;
   end if;
  end if;
+ if r.phase in ('intro','day') and coalesce((r.settings->>'turn_based')::boolean,false) then
+  select array_agg(id order by random()) into r.speech_order from vk_private.players where room_id=rid and alive;
+  r.speech_turn:=0;
+  r.speech_slot_ms:=greatest(1,floor(dur*1000.0*2/3/(cardinality(r.speech_order)*2))::int);
+  r.speech_ends_at:=now()+make_interval(secs=>r.speech_slot_ms/1000.0);
+ end if;
  update vk_private.rooms set phase=r.phase,seq=r.seq+1,day=r.day,started_at=now(),
   ends_at=now()+make_interval(secs=>dur),night_step=r.night_step,victim=r.victim,protected=r.protected,
-  winner=r.winner,announcement=r.announcement,events=r.events where id=rid;
+  winner=r.winner,announcement=r.announcement,events=r.events,
+  speech_order=r.speech_order,speech_turn=r.speech_turn,speech_slot_ms=r.speech_slot_ms,speech_ends_at=r.speech_ends_at where id=rid;
 end $$;
 
 create or replace function public.vk_create(p_name text, p_settings jsonb default '{}') returns text
 language plpgsql security definer set search_path = '' as $$
 declare uid uuid:=vk_private.require_user(); rid uuid; c text; cfg jsonb;
 begin
- if char_length(btrim(p_name)) not between 1 and 20 then raise exception 'İsmin 1–20 karakter olmalı.'; end if;
+ cfg:=vk_private.settings(p_settings);
+ if (cfg->>'host_plays')::boolean and (p_name is null or char_length(btrim(p_name)) not between 1 and 20) then
+  raise exception 'İsmin 1–20 karakter olmalı.';
+ end if;
  if (select count(*) from vk_private.rooms where host_id=uid and created_at>now()-interval '1 hour')>=5 then
   raise exception 'Bu saat yeterince masa kurdun. Mevcut masana dönebilirsin.';
  end if;
@@ -176,7 +203,9 @@ begin
   exception when unique_violation then null;
   end;
  end loop;
- insert into vk_private.players(room_id,user_id,number,name) values(rid,uid,1,btrim(p_name));
+ if (cfg->>'host_plays')::boolean then
+  insert into vk_private.players(room_id,user_id,number,name) values(rid,uid,1,btrim(p_name));
+ end if;
  return c;
 end $$;
 
@@ -186,6 +215,7 @@ declare uid uuid:=vk_private.require_user(); r vk_private.rooms; num int;
 begin
  select * into r from vk_private.rooms where code=upper(btrim(p_code)) for update;
  if not found then raise exception 'Bu kodla bir masa bulunamadı.'; end if;
+ if r.host_id=uid and not coalesce((r.settings->>'host_plays')::boolean,true) then return r.code; end if;
  if exists(select 1 from vk_private.players where room_id=r.id and user_id=uid) then return r.code; end if;
  if r.created_at<now()-interval '24 hours' then raise exception 'Bu masanın süresi dolmuş. Yeni bir masa kurun.'; end if;
  if r.phase<>'lobby' then raise exception 'Oyun başladı; artık bu masaya katılamazsın.'; end if;
@@ -205,7 +235,7 @@ begin
  if not found or r.host_id<>uid then raise exception 'Oyunu yalnızca masayı kuran kişi başlatabilir.'; end if;
  if r.phase<>'lobby' then raise exception 'Oyun zaten başladı.'; end if;
  select array_agg(id order by random()) into ids from vk_private.players where room_id=r.id;
- if cardinality(ids)<4 then raise exception 'Başlamak için en az 4 kişi gerekli.'; end if;
+ if coalesce(cardinality(ids),0)<4 then raise exception 'Başlamak için en az 4 kişi gerekli.'; end if;
  update vk_private.players set role='villager',alive=true where room_id=r.id;
  update vk_private.players set role='vampire' where id=ids[1];
  if (r.settings->>'doctor')::boolean then
@@ -226,7 +256,7 @@ begin
  perform vk_private.advance(r.id);
  select * into r from vk_private.rooms where id=r.id;
  if p_seq<>r.seq then raise exception 'Oyun yeni aşamaya geçti. Ekran güncelleniyor.'; end if;
- if p_action='early' and r.phase='day' then
+ if p_action='early' and r.phase in ('intro','day','runoff') then
   insert into vk_private.early_votes values(r.id,r.seq,me.id) on conflict do nothing;
  elsif p_action in ('vote','kill','protect') then
   select * into target_player from vk_private.players where id=p_target and room_id=r.id and alive;
@@ -256,18 +286,20 @@ end $$;
 create or replace function public.vk_state(p_code text) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare uid uuid:=vk_private.require_user(); r vk_private.rooms; me vk_private.players;
- plist jsonb; tally jsonb; picked uuid; early_count int; early_mine boolean; turn boolean; chosen boolean;
+ plist jsonb; tally jsonb; picked uuid; early_count int; early_mine boolean; turn boolean:=false; chosen boolean:=false;
+ observer boolean; speech jsonb; count_speakers int; speaker_id uuid;
 begin
  select * into r from vk_private.rooms where code=upper(btrim(p_code));
  if not found then raise exception 'Masa bulunamadı.'; end if;
  select * into me from vk_private.players where room_id=r.id and user_id=uid;
- if not found then raise exception 'Önce bu masaya katılmalısın.'; end if;
+ observer:=not found;
+ if observer and r.host_id<>uid then raise exception 'Önce bu masaya katılmalısın.'; end if;
  perform vk_private.advance(r.id);
  select * into r from vk_private.rooms where id=r.id;
- update vk_private.players set last_seen=now() where id=me.id returning * into me;
- select jsonb_agg(jsonb_build_object('id',id,'number',number,'name',name,'alive',alive,
+ if not observer then update vk_private.players set last_seen=now() where id=me.id returning * into me; end if;
+ select coalesce(jsonb_agg(jsonb_build_object('id',id,'number',number,'name',name,'alive',alive,
   'online',last_seen>now()-interval '20 seconds','eliminated_by',eliminated_by,
-  'role',case when r.phase='finished' then role else null end) order by number)
+  'role',case when r.phase='finished' then role else null end) order by number),'[]'::jsonb)
  into plist from vk_private.players where room_id=r.id;
  select target into picked from vk_private.votes where room_id=r.id and seq=r.seq and voter=me.id;
  if picked is not null then
@@ -276,20 +308,49 @@ begin
  end if;
  select count(*),coalesce(bool_or(voter=me.id),false) into early_count,early_mine
   from vk_private.early_votes where room_id=r.id and seq=r.seq;
- turn:=r.phase='night' and me.alive and me.role=r.night_step;
- chosen:=case when turn and me.role='vampire' then r.victim is not null
+ if not observer then
+  turn:=r.phase='night' and me.alive and me.role=r.night_step;
+  chosen:=case when turn and me.role='vampire' then r.victim is not null
               when turn and me.role='doctor' then r.protected is not null else false end;
+ end if;
+ count_speakers:=cardinality(r.speech_order);
+ if r.phase in ('intro','day') and coalesce((r.settings->>'turn_based')::boolean,false) and count_speakers>0 then
+  if r.speech_turn<count_speakers*2 then speaker_id:=r.speech_order[r.speech_turn%count_speakers+1]; end if;
+  speech:=jsonb_build_object('order',r.speech_order,'turn_index',r.speech_turn,'round',least(2,r.speech_turn/count_speakers+1),
+   'speaker_id',speaker_id,'ends_at',r.speech_ends_at,'slot_ms',r.speech_slot_ms,'group',speaker_id is null);
+ end if;
  return jsonb_build_object('code',r.code,'phase',r.phase,'seq',r.seq,'day',r.day,
   'started_at',r.started_at,'ends_at',r.ends_at,'server_now',now(),'settings',r.settings,
-  'is_host',r.host_id=uid,'players',plist,'winner',r.winner,'announcement',r.announcement,'events',r.events,
-  'me',jsonb_build_object('id',me.id,'number',me.number,'name',me.name,'alive',me.alive,
-    'role',case when r.phase<>'lobby' then me.role else null end,'self_heal_used',me.self_heal_used,'eliminated_by',me.eliminated_by),
+  'is_host',r.host_id=uid,'is_observer',observer,'players',plist,'winner',r.winner,'announcement',r.announcement,'events',r.events,
+  'me',case when observer then null else jsonb_build_object('id',me.id,'number',me.number,'name',me.name,'alive',me.alive,
+    'role',case when r.phase<>'lobby' then me.role else null end,'self_heal_used',me.self_heal_used,'eliminated_by',me.eliminated_by) end,
   'my_turn',turn,'has_chosen',chosen,'my_vote',picked,'tally',tally,'early_count',early_count,'early_mine',early_mine,
-  'votes_cast',case when r.phase='voting' then (select count(*) from vk_private.votes where room_id=r.id and seq=r.seq) else 0 end);
+  'speech',speech,'votes_cast',case when r.phase='voting' then (select count(*) from vk_private.votes where room_id=r.id and seq=r.seq) else 0 end);
+end $$;
+
+-- Only the current speaker may finish their turn; stale taps cannot skip a later turn.
+create or replace function public.vk_speak(p_code text,p_seq int,p_turn int) returns void
+language plpgsql security definer set search_path = '' as $$
+declare uid uuid:=vk_private.require_user(); r vk_private.rooms; me vk_private.players; count_speakers int;
+begin
+ select * into r from vk_private.rooms where code=upper(btrim(p_code)) for update;
+ if not found then raise exception 'Masa bulunamadı.'; end if;
+ select * into me from vk_private.players where room_id=r.id and user_id=uid and alive;
+ if not found then raise exception 'Sadece sırası gelen oyuncu sözünü bitirebilir.'; end if;
+ perform vk_private.advance(r.id);
+ select * into r from vk_private.rooms where id=r.id;
+ count_speakers:=cardinality(r.speech_order);
+ if r.seq<>p_seq or r.speech_turn<>p_turn then raise exception 'Konuşma sırası değişti. Ekran güncelleniyor.'; end if;
+ if r.phase not in ('intro','day') or not coalesce((r.settings->>'turn_based')::boolean,false)
+  or count_speakers=0 or r.speech_turn>=count_speakers*2 then raise exception 'Şu anda serbest konuşma zamanı.'; end if;
+ if r.speech_order[r.speech_turn%count_speakers+1]<>me.id then raise exception 'Şu anda başka bir oyuncu konuşuyor.'; end if;
+ update vk_private.rooms set speech_turn=speech_turn+1,
+  speech_ends_at=case when speech_turn+1<count_speakers*2 then now()+make_interval(secs=>speech_slot_ms/1000.0) else null end
+  where id=r.id;
 end $$;
 
 revoke all on all tables in schema vk_private from public,anon,authenticated;
 revoke all on all functions in schema vk_private from public,anon,authenticated;
-revoke all on function public.vk_create(text,jsonb),public.vk_join(text,text),public.vk_start(text),public.vk_act(text,int,text,uuid),public.vk_state(text) from public,anon;
-grant execute on function public.vk_create(text,jsonb),public.vk_join(text,text),public.vk_start(text),public.vk_act(text,int,text,uuid),public.vk_state(text) to authenticated;
+revoke all on function public.vk_create(text,jsonb),public.vk_join(text,text),public.vk_start(text),public.vk_act(text,int,text,uuid),public.vk_state(text),public.vk_speak(text,int,int) from public,anon;
+grant execute on function public.vk_create(text,jsonb),public.vk_join(text,text),public.vk_start(text),public.vk_act(text,int,text,uuid),public.vk_state(text),public.vk_speak(text,int,int) to authenticated;
 commit;
