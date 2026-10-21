@@ -1,0 +1,68 @@
+# Vampir Köylü
+
+Moderatörsüz, aynı masada herkesin kendi telefonundan oynadığı Türkçe parti oyunu. Piksel köyü, yumuşak gündüz/gece geçişleri, dört renk paketi, QR kodla katılım ve gizli roller.
+
+## Çalıştırma
+
+Node.js 22 veya 24 ile:
+
+```sh
+npm ci
+npm run dev
+```
+
+Üretim dosyaları: `npm run build` → `dist/`. Çıktı tamamen statiktir; GitHub Pages'te çalışır. Sunucu çalıştırmanız gerekmez. Davetler `?oda=ABC123` kullanır, bu yüzden sayfa yenilemelerinde 404 oluşmaz.
+
+## Supabase
+
+Bu sürüm `pdqtsrwclrfenmrtsluh` projesine bağlıdır. Kaynak koddaki `sb_publishable_…` anahtarı, tarayıcıda paylaşılmak için tasarlanan açık anahtardır. Gizli veya service-role anahtarı içermez.
+
+Başka projeye taşırken:
+
+1. Supabase SQL Editor'de `supabase/setup.sql` dosyasını çalıştırın. Mevcut oyun verilerini silmez.
+2. Authentication → Sign In / Providers → **Allow anonymous sign-ins** ayarını açıp kaydedin.
+3. `.env.example` dosyasını `.env.local` olarak kopyalayın. Yeni proje URL'sini ve **publishable** anahtarını yazın.
+4. `npm run build` komutunu çalıştırın.
+
+GitHub Actions'ta farklı proje kullanmak için aynı `VITE_…` değişkenlerini build adımının `env` alanına ekleyin. Varsayılan proje için ek ayar gerekmez.
+
+## GitHub Pages
+
+Settings → Pages → Source: **GitHub Actions**. `main` dalına gönderilen her değişiklik önce test edilir, ardından derlenip yayınlanır. İş akışı `.github/workflows/pages.yml` içindedir.
+
+## Oyun kuralları
+
+- 4–24 oyuncu; tam 1 vampir, isteğe bağlı 1 doktor ve 1 şarlatan, kalanlar köylü. Roller sunucuda rastgele dağıtılır. Numaralar sabit kalır.
+- Roller 7 saniye gösterilir, ardından 5 saniye geri sayım yapılır.
+- İlk konuşmadan sonra ilk gece başlar. İlk konuşmada idam yoktur.
+- Sonraki gündüzlerde süre bitince oylama açılır. Yaşayanların yarısından fazlasının isteğiyle erken açılabilir.
+- Çoğunluk = `floor(yaşayan / 2) + 1`. Ölüler oy kullanamaz. Kendine oy yoktur. Kesinleşmiş oy değişmez. Sayılar yalnızca kendi oyunu verenlere görünür.
+- Oylama en az belirlenen süre kadar sürer; ayrıca yaşayan herkesin oy vermesi beklenir. Çoğunluk çıkmazsa ek tartışma başlar, ardından boş oylarla yeni tur açılır.
+- Vampir hedefini seçer. Varsa yaşayan doktor, hedefi bilmeden sonrasında koruma seçer. Ölüm ancak iki aşama tamamlanınca uygulanır. Doktor hedef olmuş olsa bile o gece hamle yapar.
+- Her gece hamlesi en az belirlenen süre kadar sürer ve seçim yapılmadan tamamlanmaz. Doktor kendini tüm oyunda bir kez, başkalarını tekrar tekrar koruyabilir.
+- Vampir idam edilirse köylüler ve doktor, elenmiş olsalar da kazanır.
+- Şarlatan idam edilirse yalnızca şarlatan kazanır ve oyun anında biter. Gece öldürülürse kaybeder.
+- Vampir hayattayken 3 veya daha az yaşayan oyuncuyla gece başlayacaksa kazanır. Gece 4 kişiden 3 kişiye düşülmesi gündüzün oynanmasına engel olmaz.
+- Ölüm sonrası roller gizli kalır, oyun sonunda tüm roller açılır.
+- Bağlantısı kopan kişi aynı tarayıcıyla geri dönebilir. Masayı kuranın ayrılması devam eden oyunu durdurmaz. Eksik hamle veya oy varsa sınırsız beklenir; otomatik oyuncu eleme yoktur.
+
+Süreler masa kurulurken ayarlanır: gündüz 30–1800 sn (varsayılan 300), her gece hamlesi 15–120 sn (15), oylama 20–120 sn (20), ek tartışma 15–300 sn (60). Oyun içi sonuç duyuruları 7 sn sürer. Çok vampirli mod, "Yakında" bilgisiyle kapalıdır.
+
+## Teknik yapı ve doğrulama
+
+React + TypeScript + Vite. Fontlar ve tüm görseller projeyle birlikte gelir; harici font servisi veya görsel servisi gerekmez. Karakter ve köy illüstrasyonları SVG'dir. Mobil tarayıcılar için manifest, güvenli alanlar, dokunma hedefleri, klavye erişimi ve azaltılmış hareket desteği bulunur.
+
+Oyun motoru PostgreSQL fonksiyonlarıdır. `vk_private` şeması HTTP API'ye açık değildir. Tablolarda RLS açık, istemcilere doğrudan tablo izni yoktur. Beş dar kapsamlı RPC, oturum kimliğini, masa üyeliğini, rolü, hedefi ve aşamayı kontrol eder. Roller sadece sahibi için döndürülür. Tur kilidi eşzamanlı hamleleri sıraya koyar; aşama numarası eski istekleri reddeder. Zamanı veritabanı belirler. İstemciler 1,8 saniyede bir durumu alır; host telefonuna veya ayrıca zamanlayıcı servisine bağımlılık yoktur.
+
+```sh
+npm test
+npm run build
+```
+
+Testler aynı SQL dosyasını PGlite üzerinde gerçek PostgreSQL motorunda çalıştırır. Çoğunluk, berabere oylar, süre sınırları, gizli oylar, rol dağıtımı, doktor, şarlatan, kazanma anı ve yetkisiz erişim senaryolarını kapsar.
+
+## İşletim notları
+
+Misafir kimliği aynı tarayıcıda saklanır. Tarayıcı verileri silinirse veya başka telefona geçilirse aynı kimlik geri alınamaz. Ücretsiz Supabase projesi hareketsizlikten duraklatılabilir; gerekirse panelden uyandırılır. İnternet gerekir. Yeni anonim girişler sağlayıcının hız sınırına tabidir; mevcut oturumlar tekrar kullanılır.
+
+Masalara yeni katılım 24 saat sonra kapanır. Kayıtlar otomatik silinmez; kullanım büyüdüğünde eski masalar için saklama süresi/temizleme görevi eklenmelidir. İsim dışında kişisel veri istenmez. Yeni masa kurma, oyuncu başına saatte 5 ile sınırlıdır. Bu sürüm, arkadaş gruplarıyla kullanım için hazırlanmıştır.
