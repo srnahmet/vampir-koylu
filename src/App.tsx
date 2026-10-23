@@ -62,6 +62,7 @@ import { RoleOptions } from "./RoleOptions";
 import { VampireAttack } from "./VampireAttack";
 import { useVoice } from "./voice/useVoice";
 import { VoicePanel, VoiceBadge } from "./voice/VoicePanel";
+import { useGameSounds } from "./sound/useGameSounds";
 
 type Panel = "create" | "join" | "rules" | "theme" | "role" | null;
 function Modal({
@@ -270,7 +271,6 @@ export default function App() {
     (localStorage.getItem("vk-theme") as Theme) || "classic",
   );
   const [nightPreview, setNightPreview] = useState(false);
-  const [sound, setSound] = useState(false);
   const [game, setGame] = useState<Game | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -280,8 +280,13 @@ export default function App() {
   const [qr, setQr] = useState("");
   const [offset, setOffset] = useState(0);
   const voice = useVoice(game, offset);
-  const audio = useRef<AudioContext | null>(null);
-  const lastPhase = useRef("");
+  const sound = useGameSounds({
+    panel,
+    room: code,
+    phase: game?.phase || null,
+    nightPreview,
+    onNotice: setNotice,
+  });
   const activeNight = game ? game.phase === "night" : nightPreview;
   const actualTheme = game?.settings.theme || theme;
   useEffect(() => {
@@ -347,22 +352,7 @@ export default function App() {
   }, [code, refresh]);
   useEffect(() => {
     setSelected(null);
-    if (game && lastPhase.current !== `${game.phase}-${game.seq}`) {
-      lastPhase.current = `${game.phase}-${game.seq}`;
-      if (sound && audio.current) {
-        const a = audio.current;
-        const osc = a.createOscillator();
-        const gain = a.createGain();
-        osc.connect(gain);
-        gain.connect(a.destination);
-        osc.frequency.value = game.phase === "night" ? 330 : 660;
-        gain.gain.setValueAtTime(0.045, a.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.35);
-        osc.start();
-        osc.stop(a.currentTime + 0.35);
-      }
-    }
-  }, [game?.seq, sound]);
+  }, [game?.code, game?.seq]);
   useEffect(() => {
     if (!notice) return;
     const t = setTimeout(() => setNotice(""), 3500);
@@ -474,13 +464,6 @@ export default function App() {
     setError("");
     setPanel(p);
   }
-  function toggleSound() {
-    if (!sound) {
-      audio.current ||= new AudioContext();
-      void audio.current.resume();
-    }
-    setSound(!sound);
-  }
   const alive = game?.players.filter((p) => p.alive) || [];
   const needed = Math.floor(alive.length / 2) + 1;
   const canChoose =
@@ -555,11 +538,20 @@ export default function App() {
             </button>
             <span className="nav-divider" />
             <button
-              className="icon-button"
-              onClick={toggleSound}
-              aria-label={sound ? "Sesi kapat" : "Sesi aç"}
+              className="icon-button sound-toggle"
+              data-sound-toggle
+              onClick={sound.toggle}
+              aria-label={
+                sound.enabled ? "Oyun efektlerini kapat" : "Oyun efektlerini aç"
+              }
+              aria-pressed={sound.enabled}
+              title="Buton tıklamaları ve ekran geçişleri için hafif ses efektleri"
             >
-              {sound ? <Volume2 size={19} /> : <VolumeX size={19} />}
+              {sound.enabled ? <Volume2 size={19} /> : <VolumeX size={19} />}
+              <span className="sound-status">
+                <strong>Efektler</strong>
+                <small>{sound.enabled ? "Açık" : "Kapalı"}</small>
+              </span>
             </button>
             <button
               className="icon-button"

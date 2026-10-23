@@ -12,7 +12,7 @@ Doktor ve **Soytarı** için üç seçenek vardır: **Kesin olsun**, **Şansa b�
 
 Muhtar, Koruma, Avcı, Şaman, Silahşör ve Yavru Vampir ana menüde kendilerine özel SVG piksel karakterleriyle **Yakında** olarak görünür. Bu altı rol seçilemez ve oyunda dağıtılmaz; özellikleri henüz oyuna eklenmemiştir.
 
-Kartların **Özellikler** bölümündeki tanıtımlar: Muhtarın oyu iki sayılır; Koruma saldırıya uğrayan hedefinin yerine ölür; Avcı ölürken seçtiği bir oyuncuyu yanında götürür; Şaman her gece bir köylüyü susturur, hedefi ertesi gün tartışmada konuşamaz ama oy verebilir ve konuşursa elenir; Silahşör bir kez seçtiği bir oyuncuyu vurabilir; Yavru Vampir idam edilirse vampir ertesi gece iki kişiye saldırabilir. Bunlar kullanıcı tarafından onaylanan gelecek rol taslaklarıdır; şu anki oyun motorunda etkin değillerdir.
+Kartların **Özellikler** bölümündeki tanıtımlar: Muhtarın oyu iki sayılır ve oylama eşit biterse idam edilecek kişiyi seçer; Koruma saldırıya uğrayan hedefinin yerine ölür; Avcı ölürken seçtiği bir oyuncuyu yanında götürür; Şaman her gece bir köylüyü susturur, hedefi ertesi gün tartışmada konuşamaz ama oy verebilir ve konuşursa elenir; Silahşör bir kez seçtiği bir oyuncuyu vurabilir, bir köylüyü vurursa ertesi gün vicdan azabıyla kendi canına kıyar; Yavru Vampir idam edilirse vampir ertesi gece iki kişiye saldırabilir, vampir ölürse yavru onun avlanma yeteneğini devralır. Bunlar kullanıcı tarafından onaylanan gelecek rol taslaklarıdır; şu anki oyun motorunda etkin değillerdir.
 
 Vampirin öldürdüğü oyuncu, ölüm kesinleştikten sonra yalnızca kendi ekranında piksel vampir dişleri ve hafif kan izleriyle kısa bir sahne görür. Doktorun kurtardığı oyuncuya, diğer oyunculara veya izleyici kurucuya bu sahne gösterilmez. Sahne kapatılabilir veya 8 saniye sonra kendiliğinden kapanır; aynı tarayıcı sekmesinde onaylandıktan sonra tekrar gösterilmez. Azaltılmış hareket tercihi animasyonları durdurur.
 
@@ -25,6 +25,10 @@ Masa kurarken **Ben de oynayacağım** veya **Yalnızca masayı yönet** seçili
 **Sıra bazlı konuşma** açıldığında her gündüz yaşayan oyuncular için yeni bir rastgele sıra oluşturulur. Aynı sıra iki tur döner. Toplam gündüz süresinin yaklaşık üçte ikisi bu iki tura eşit bölünür; kalan süre serbest tartışmadır. Konuşmacı **Sözümü bitirdim** ile erken geçebilir, süre dolunca otomatik geçilir. İki tur tamamlanınca **Şimdi söz hepinizde!** görünür. Konuşma sırası veritabanında tutulur; bütün ekranlar aynı konuşmacıyı görür. Konuşma turları gündüz saatini veya erken geçiş oylarını sıfırlamaz. Kalabalık masalarda gündüz süresini uzatabilirsiniz.
 
 Gece, oylama, ölüm, idam, doktor kurtarışı, rol dağıtımı ve üç kazanma durumu için ayrı SVG piksel sahneleri ve CSS animasyonları vardır. Ölen veya konuşan kişinin özel rolü görselden açığa çıkmaz; nötr köy sakini çizimleri kullanılır. Azaltılmış hareket tercihi animasyonları durdurur.
+
+## Küçük oyun efektleri
+
+Üst menüde **Efektler · Açık/Kapalı** düğmesi, tıklama ve ekran geçişi seslerini kontrol eder. Varsayılan kapalıdır; açılınca kısa bir onay tonu çalar. Butonlar, rol seçenekleri, anahtarlar, paneller ve gündüz/gece/oylama geçişleri hafif seslerle vurgulanır. Fareyle üzerine gelmek veya her sayaç saniyesi ses çıkarmaz. Efektler 0,05–0,32 saniye uzunluğundadır, yerel Web Audio tonlarıdır; ses dosyası indirilmez. Kapatınca çalan ve sıradaki tonlar durur, ses kaynakları serbest bırakılır. Bu düğme masadaki sesli sohbet ve mikrofon ayarından bağımsızdır.
 
 ## İsteğe bağlı sesli sohbet
 

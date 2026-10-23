@@ -31,7 +31,8 @@ export const upcomingRoles: {
     id: "mayor",
     name: "Muhtar",
     flavor: "Köy meydanının tanıdık yüzü.",
-    features: "Oylamada verdiği oy iki oy sayılır.",
+    features:
+      "Verdiği oy iki sayılır. Oylama eşit biterse kimin idam edileceğine o karar verir.",
   },
   {
     id: "bodyguard",
@@ -56,13 +57,15 @@ export const upcomingRoles: {
     id: "gunslinger",
     name: "Silahşör",
     flavor: "Şapkasının altında yeni bir sır.",
-    features: "Oyun boyunca bir kez seçtiği bir oyuncuyu vurabilir.",
+    features:
+      "Oyun boyunca bir kez bir oyuncuyu vurabilir. Köylüyü vurursa ertesi gün vicdan azabıyla kendi canına kıyar.",
   },
   {
     id: "vampire_cub",
     name: "Yavru Vampir",
     flavor: "Küçük dişler. Kocaman bir sır.",
-    features: "İdam edilirse vampir ertesi gece iki kişiye saldırabilir.",
+    features:
+      "İdam edilirse vampir ertesi gece iki kişiye saldırabilir. Vampir ölürse onun avlanma yeteneğini devralır.",
   },
 ];
 export type Theme = "classic" | "lavender" | "forest" | "peach";

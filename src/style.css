@@ -219,6 +219,25 @@ dialog {
   background: var(--soft);
   color: var(--ink);
 }
+.sound-toggle {
+  gap: 7px;
+}
+.sound-toggle[aria-pressed="true"] {
+  color: var(--accent-dark);
+  background: var(--soft);
+}
+.sound-status {
+  display: grid;
+  text-align: left;
+  line-height: 1.25;
+}
+.sound-status strong {
+  font-size: 10px;
+}
+.sound-status small {
+  font-size: 9px;
+  font-weight: 500;
+}
 .nav-link,
 .text-button {
   border: 0;
@@ -2095,6 +2114,19 @@ dialog {
   }
   .site-header nav {
     gap: 4px;
+  }
+  .site-header .sound-toggle {
+    flex-direction: column;
+    gap: 2px;
+    min-width: 44px;
+    padding: 5px;
+  }
+  .sound-status {
+    text-align: center;
+  }
+  .sound-status strong,
+  .sound-status small {
+    font-size: 8px;
   }
   .nav-link {
     margin-right: 3px;

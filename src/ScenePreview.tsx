@@ -3,6 +3,7 @@ import { EventScene, type SceneKind } from "./EventScene";
 import { useState } from "react";
 import { VampireAttack } from "./VampireAttack";
 import { Sprite } from "./art";
+import { SoundPreview } from "./sound/SoundPreview";
 export default function ScenePreview() {
   const [attack, setAttack] = useState<string | null>(null);
   return (
@@ -10,6 +11,7 @@ export default function ScenePreview() {
       <VampireAttack eventKey={attack} />
       <h1>Köyden küçük hikâyeler</h1>
       <p>GISM 🤝 SPTLS · Piksel sahneleri</p>
+      <SoundPreview />
       <section className="paper-card" style={{ padding: 24, marginBottom: 24 }}>
         <Sprite role="vampire_cub" />
         <h2>Yavru Vampir · Yakında</h2>
