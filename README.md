@@ -12,7 +12,7 @@ Doktor ve **Soytarı** için üç seçenek vardır: **Kesin olsun**, **Şansa b�
 
 Muhtar, Koruma, Avcı, Şaman, Silahşör ve Yavru Vampir ana menüde kendilerine özel SVG piksel karakterleriyle **Yakında** olarak görünür. Bu altı rol seçilemez ve oyunda dağıtılmaz; özellikleri henüz oyuna eklenmemiştir.
 
-Kartların **Özellikler** bölümündeki tanıtımlar: Muhtarın oyu iki sayılır; Koruma saldırıya uğrayan hedefinin yerine ölür; Avcı ölürken seçtiği bir oyuncuyu yanında götürür; Şaman bir kez ölü diriltebilir; Silahşör bir kez seçtiği bir oyuncuyu vurabilir; Yavru Vampir idam edilirse vampir ertesi gece iki kişiye saldırabilir. Bunlar kullanıcı tarafından onaylanan gelecek rol taslaklarıdır; şu anki oyun motorunda etkin değillerdir.
+Kartların **Özellikler** bölümündeki tanıtımlar: Muhtarın oyu iki sayılır; Koruma saldırıya uğrayan hedefinin yerine ölür; Avcı ölürken seçtiği bir oyuncuyu yanında götürür; Şaman her gece bir köylüyü susturur, hedefi ertesi gün tartışmada konuşamaz ama oy verebilir ve konuşursa elenir; Silahşör bir kez seçtiği bir oyuncuyu vurabilir; Yavru Vampir idam edilirse vampir ertesi gece iki kişiye saldırabilir. Bunlar kullanıcı tarafından onaylanan gelecek rol taslaklarıdır; şu anki oyun motorunda etkin değillerdir.
 
 Vampirin öldürdüğü oyuncu, ölüm kesinleştikten sonra yalnızca kendi ekranında piksel vampir dişleri ve hafif kan izleriyle kısa bir sahne görür. Doktorun kurtardığı oyuncuya, diğer oyunculara veya izleyici kurucuya bu sahne gösterilmez. Sahne kapatılabilir veya 8 saniye sonra kendiliğinden kapanır; aynı tarayıcı sekmesinde onaylandıktan sonra tekrar gösterilmez. Azaltılmış hareket tercihi animasyonları durdurur.
 

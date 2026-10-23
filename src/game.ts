@@ -49,7 +49,8 @@ export const upcomingRoles: {
     id: "shaman",
     name: "Şaman",
     flavor: "Rüzgâr ona bir şeyler fısıldıyor.",
-    features: "Oyun boyunca bir kez ölen bir oyuncuyu diriltebilir.",
+    features:
+      "Her gece bir köylüyü susturur. Ertesi gün tartışmada konuşamaz, yalnızca oy verebilir. Konuşursa elenir.",
   },
   {
     id: "gunslinger",
