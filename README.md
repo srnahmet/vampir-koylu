@@ -10,7 +10,11 @@ Her tarayıcı kimliği son 60 dakikada en fazla **10 masa** kurabilir. Ana men�
 
 Doktor ve **Soytarı** için üç seçenek vardır: **Kesin olsun**, **Şansa bırak**, **Olmasın**. Şansa bırakılan her rol için oyun başlatılırken sunucuda bağımsız %50 çekiliş yapılır; iki rol de gelebilir, sadece biri gelebilir veya hiçbiri gelmeyebilir. Kurucu dahil kimse çekiliş sonucunu öğrenmez; herkes yalnızca kendi rolünü görür. Ayarlarda çekilişin sonucu yerine seçilen mod görünür. Doktor şansa bırakılmışsa doktor çıkmasa veya elenmiş olsa da gece ikinci asgari süreyi bekler; hiç doktor yokken hamle bekleyip kilitlenmez. Eski boolean rol ayarları desteklenir.
 
-Muhtar, Koruma, Avcı, Şaman ve Silahşör ana menüde kendilerine özel SVG piksel karakterleriyle **Yakında** olarak görünür. Bu beş rol seçilemez ve oyunda dağıtılmaz; özellikleri henüz oyuna eklenmemiştir.
+Muhtar, Koruma, Avcı, Şaman, Silahşör ve Yavru Vampir ana menüde kendilerine özel SVG piksel karakterleriyle **Yakında** olarak görünür. Bu altı rol seçilemez ve oyunda dağıtılmaz; özellikleri henüz oyuna eklenmemiştir.
+
+Kartların **Özellikler** bölümündeki tanıtımlar: Muhtarın oyu iki sayılır; Koruma saldırıya uğrayan hedefinin yerine ölür; Avcı ölürken seçtiği bir oyuncuyu yanında götürür; Şaman bir kez ölü diriltebilir; Silahşör bir kez seçtiği bir oyuncuyu vurabilir; Yavru Vampir idam edilirse vampir ertesi gece iki kişiye saldırabilir. Bunlar kullanıcı tarafından onaylanan gelecek rol taslaklarıdır; şu anki oyun motorunda etkin değillerdir.
+
+Vampirin öldürdüğü oyuncu, ölüm kesinleştikten sonra yalnızca kendi ekranında piksel vampir dişleri ve hafif kan izleriyle kısa bir sahne görür. Doktorun kurtardığı oyuncuya, diğer oyunculara veya izleyici kurucuya bu sahne gösterilmez. Sahne kapatılabilir veya 8 saniye sonra kendiliğinden kapanır; aynı tarayıcı sekmesinde onaylandıktan sonra tekrar gösterilmez. Azaltılmış hareket tercihi animasyonları durdurur.
 
 ## Paylaşım ekranı ve konuşma sırası
 

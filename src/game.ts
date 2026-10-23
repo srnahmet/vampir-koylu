@@ -6,7 +6,8 @@ export type UpcomingRole =
   | "bodyguard"
   | "hunter"
   | "shaman"
-  | "gunslinger";
+  | "gunslinger"
+  | "vampire_cub";
 export type ArtworkRole = Role | UpcomingRole;
 export type RoomQuota = {
   limit: number;
@@ -24,15 +25,43 @@ export const upcomingRoles: {
   id: UpcomingRole;
   name: string;
   flavor: string;
+  features: string;
 }[] = [
-  { id: "mayor", name: "Muhtar", flavor: "Köy meydanının tanıdık yüzü." },
-  { id: "bodyguard", name: "Koruma", flavor: "Kalkanı hazır, gözü kapıda." },
-  { id: "hunter", name: "Avcı", flavor: "Ormandan yeni izlerle geliyor." },
-  { id: "shaman", name: "Şaman", flavor: "Rüzgâr ona bir şeyler fısıldıyor." },
+  {
+    id: "mayor",
+    name: "Muhtar",
+    flavor: "Köy meydanının tanıdık yüzü.",
+    features: "Oylamada verdiği oy iki oy sayılır.",
+  },
+  {
+    id: "bodyguard",
+    name: "Koruma",
+    flavor: "Kalkanı hazır, gözü kapıda.",
+    features: "Koruduğu kişi saldırıya uğrarsa onun yerine ölür.",
+  },
+  {
+    id: "hunter",
+    name: "Avcı",
+    flavor: "Ormandan yeni izlerle geliyor.",
+    features: "Öldüğünde seçtiği bir oyuncuyu yanında götürür.",
+  },
+  {
+    id: "shaman",
+    name: "Şaman",
+    flavor: "Rüzgâr ona bir şeyler fısıldıyor.",
+    features: "Oyun boyunca bir kez ölen bir oyuncuyu diriltebilir.",
+  },
   {
     id: "gunslinger",
     name: "Silahşör",
     flavor: "Şapkasının altında yeni bir sır.",
+    features: "Oyun boyunca bir kez seçtiği bir oyuncuyu vurabilir.",
+  },
+  {
+    id: "vampire_cub",
+    name: "Yavru Vampir",
+    flavor: "Küçük dişler. Kocaman bir sır.",
+    features: "İdam edilirse vampir ertesi gece iki kişiye saldırabilir.",
   },
 ];
 export type Theme = "classic" | "lavender" | "forest" | "peach";

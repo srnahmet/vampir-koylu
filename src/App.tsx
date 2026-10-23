@@ -58,6 +58,7 @@ import { SpeechPanel } from "./SpeechPanel";
 import { EarlyAdvance } from "./EarlyAdvance";
 import { RoomAllowance } from "./RoomAllowance";
 import { RoleOptions } from "./RoleOptions";
+import { VampireAttack } from "./VampireAttack";
 
 type Panel = "create" | "join" | "rules" | "theme" | "role" | null;
 function Modal({
@@ -509,6 +510,18 @@ export default function App() {
 
   return (
     <>
+      <VampireAttack
+        eventKey={
+          game &&
+          !game.is_observer &&
+          game.phase !== "finished" &&
+          game.me &&
+          !game.me.alive &&
+          game.me.eliminated_by === "vampire"
+            ? `${game.code}:${game.me.id}`
+            : null
+        }
+      />
       <div className="app-shell">
         <div className="co-production" aria-label="GISM ve SPTLS ortak yapımı">
           <strong>GISM</strong>
@@ -722,6 +735,7 @@ export default function App() {
                     className={`upcoming-role ${role.id}`}
                     key={role.id}
                     aria-label={`${role.name} — Yakında, henüz oynanamıyor`}
+                    aria-describedby={`upcoming-${role.id}-features`}
                   >
                     <span className="upcoming-portrait">
                       <span className="pixel-glimmer" aria-hidden="true">
@@ -731,6 +745,13 @@ export default function App() {
                     </span>
                     <span className="upcoming-role-name">{role.name}</span>
                     <span className="upcoming-flavor">{role.flavor}</span>
+                    <span
+                      className="upcoming-features"
+                      id={`upcoming-${role.id}-features`}
+                    >
+                      <strong>Özellikler</strong>
+                      <span>{role.features}</span>
+                    </span>
                     <span className="upcoming-label">
                       <LockKeyhole size={12} /> YAKINDA
                     </span>

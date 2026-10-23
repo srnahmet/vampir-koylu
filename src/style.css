@@ -650,6 +650,9 @@ dialog {
 }
 .upcoming-role:disabled {
   --role-tint: #b9c8cf;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   opacity: 1;
   color: var(--text);
   background: var(--surface);
@@ -672,8 +675,12 @@ dialog {
 .upcoming-role.gunslinger {
   --role-tint: #d5b4a5;
 }
+.upcoming-role.vampire_cub {
+  --role-tint: #c7b5db;
+}
 .upcoming-portrait {
   display: flex;
+  width: 100%;
   align-items: center;
   justify-content: center;
   position: relative;
@@ -720,6 +727,7 @@ dialog {
 }
 .upcoming-label {
   display: inline-flex;
+  margin-top: auto;
   align-items: center;
   justify-content: center;
   gap: 5px;
@@ -731,6 +739,27 @@ dialog {
   font-size: 8px;
   letter-spacing: 1px;
   font-weight: 900;
+}
+.upcoming-features {
+  display: block;
+  width: 100%;
+  border-top: 1px dashed var(--line);
+  padding-top: 11px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+.upcoming-features strong {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+.upcoming-features > span {
+  display: block;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink);
 }
 .role-options {
   margin: 10px 0;

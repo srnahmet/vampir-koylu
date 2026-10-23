@@ -10,6 +10,41 @@ export function Sprite({
   className?: string;
   neutral?: boolean;
 }) {
+  if (role === "vampire_cub")
+    return (
+      <svg
+        className={`sprite ${className}`}
+        viewBox="0 0 32 40"
+        shapeRendering="crispEdges"
+        role="img"
+        aria-label="Yavru Vampir"
+      >
+        <ellipse cx="16" cy="37" rx="11" ry="2" fill="#36314a" opacity=".13" />
+        <path d="M8 25H24L29 35H22V37H10V35H3Z" fill="#66517e" />
+        <path d="M8 25H13L16 31L19 25H24L26 34H6Z" fill="#a18abb" />
+        <path d="M11 29H21V36H11" fill="#79618f" />
+        <path d="M10 35H15V38H8V36H10M18 35H23V36H25V38H18" fill="#4a3b55" />
+        <path d="M4 11H28V20H25V24H22V26H10V24H7V20H4" fill="#efd0bd" />
+        <path
+          d="M3 9H6V5H11V3H21V5H26V9H29V15H26V11H22V9H19V14H14V9H10V11H6V15H3"
+          fill="#48374f"
+        />
+        <path d="M8 5H14V7H8M21 7H25V9H21" fill="#725570" />
+        <path d="M9 16H12V19H9M21 16H24V19H21" fill="#433345" />
+        <path d="M7 20H11V22H7M22 20H26V22H22" fill="#df9fa0" />
+        <path d="M13 21H20V23H13" fill="#bd8288" />
+        <path d="M13 21H15V24H13M18 21H20V24H18" fill="#fff8e6" />
+        <path
+          d="M12 27H15V30H12M18 27H21V30H18M15 28H18V30H15"
+          fill="#cc8592"
+        />
+        <path d="M6 29H10V33H6M23 29H27V33H23" fill="#efd0bd" />
+        <path
+          d="M24 3H27V5H29V7H31V5H33V3H36V8H33V10H27V8H24Z"
+          fill="#8d739e"
+        />
+      </svg>
+    );
   const clothes = {
     villager: "#d49b50",
     vampire: "#6f598e",
