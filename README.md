@@ -26,6 +26,12 @@ Masa kurarken **Ben de oynayacağım** veya **Yalnızca masayı yönet** seçili
 
 Gece, oylama, ölüm, idam, doktor kurtarışı, rol dağıtımı ve üç kazanma durumu için ayrı SVG piksel sahneleri ve CSS animasyonları vardır. Ölen veya konuşan kişinin özel rolü görselden açığa çıkmaz; nötr köy sakini çizimleri kullanılır. Azaltılmış hareket tercihi animasyonları durdurur.
 
+## Ateş başı hikâyeleri
+
+Masa kurulduktan sonra, oyuncular toplanırken **30 kısa hikâye ve oyun ipucu** piksel karakterleriyle gösterilir. Mevcut dört rolün yanında gelecekteki altı karakteri ve aralarındaki küçük köy hikâyelerini kapsar. Gelecek rollerle ilgili kartlarda **Yakında · Yeni roller** etiketi bulunur; bu kartlar masada o rolün bulunduğu anlamına gelmez.
+
+Kartlar **15 saniyede bir** değişir. Her masanın kendine ait karışık sırası vardır; tüm 30 kart dönmeden tekrar etmez. Masa kodu ve sunucuya göre düzeltilmiş ortak saat kullanıldığı için sonradan katılanlar da aynı akışı görür. Hikâyeler gizli rollerden veya oyuncu kimliklerinden etkilenmez. İleri/geri ve duraklat/devam et düğmeleriyle okunabilir; elle gezinmek akışı duraklatır. Arka plandaki sekmede zamanlayıcı durur, geri dönünce ortak sıraya yetişir. Oyun başlayınca hikâye alanı ve zamanlayıcısı kaldırılır. Ek sunucu sorgusu, medya indirmesi veya otomatik hikâye sesi yoktur.
+
 ## Küçük oyun efektleri
 
 Üst menüde **Efektler · Açık/Kapalı** düğmesi, tıklama ve ekran geçişi seslerini kontrol eder. Varsayılan kapalıdır; açılınca kısa bir onay tonu çalar. Butonlar, rol seçenekleri, anahtarlar, paneller ve gündüz/gece/oylama geçişleri hafif seslerle vurgulanır. Fareyle üzerine gelmek veya her sayaç saniyesi ses çıkarmaz. Efektler 0,05–0,32 saniye uzunluğundadır, yerel Web Audio tonlarıdır; ses dosyası indirilmez. Kapatınca çalan ve sıradaki tonlar durur, ses kaynakları serbest bırakılır. Bu düğme masadaki sesli sohbet ve mikrofon ayarından bağımsızdır.

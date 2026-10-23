@@ -1,0 +1,255 @@
+.lobby-stories.paper-card {
+  max-width: 880px;
+  margin: 0 auto 25px;
+  padding: 18px 22px 0;
+  overflow: hidden;
+}
+.story-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--accent-dark);
+  font-size: 11px;
+  font-weight: 850;
+}
+.story-heading > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.story-count {
+  font-family: var(--heading);
+  font-size: 19px;
+  white-space: nowrap;
+}
+.story-count > span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.story-slide {
+  display: grid;
+  grid-template-columns: 158px 1fr;
+  gap: 24px;
+  align-items: center;
+  min-height: 148px;
+  padding: 13px 0;
+  animation: story-arrive 0.3s ease-out;
+}
+.story-art {
+  width: 158px;
+  height: 112px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--soft) 60%, #e8e1c7);
+  color: var(--accent-dark);
+}
+.story-art-night {
+  background: #514963;
+  color: #cab4d1;
+  border-color: #746482;
+}
+.story-art > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.story-cast {
+  position: absolute;
+  inset: auto 14px 7px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.story-cast .sprite {
+  width: 49px;
+  height: 65px;
+  filter: drop-shadow(0 3px 0 #39314715);
+}
+.story-cast .sprite:last-child {
+  transform: scaleX(-1);
+}
+.story-cast.solo {
+  justify-content: center;
+}
+.story-cast.solo .sprite {
+  transform: none;
+}
+.story-spark {
+  position: absolute;
+  top: 38px;
+  left: 76px;
+  color: #e1bd79;
+  font-size: 12px;
+}
+.story-copy {
+  min-width: 0;
+}
+.story-kind {
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.8px;
+  color: var(--muted);
+}
+.story-kind.upcoming {
+  color: var(--purple);
+}
+.story-copy h2 {
+  font-family: var(--heading);
+  font-size: 25px;
+  line-height: 1.15;
+  margin: 7px 0 9px;
+  font-weight: 600;
+}
+.story-copy p {
+  font-size: 13px;
+  line-height: 1.75;
+  margin: 0;
+  max-width: 560px;
+  text-wrap: pretty;
+}
+.story-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px dashed var(--line);
+  padding: 7px 0;
+}
+.story-cadence {
+  font-size: 9px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.story-controls {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.story-controls .icon-button {
+  padding: 5px;
+  min-width: 32px;
+  min-height: 32px;
+}
+.story-pause {
+  min-width: 80px;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 10px;
+  padding: 8px 2px;
+  gap: 5px;
+}
+.story-progress {
+  height: 3px;
+  background: var(--soft);
+  margin: 0 -22px;
+}
+.story-progress span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+  animation: story-time 15s linear both;
+  opacity: 0.65;
+}
+.story-announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@keyframes story-time {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes story-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 540px) {
+  .lobby-stories.paper-card {
+    padding: 15px 15px 0;
+    margin-bottom: 18px;
+  }
+  .story-slide {
+    grid-template-columns: 83px 1fr;
+    gap: 13px;
+    min-height: 210px;
+  }
+  .story-art {
+    width: 83px;
+    height: 108px;
+  }
+  .story-art > svg {
+    width: 162px;
+    max-width: none;
+    transform: translateX(-40px);
+  }
+  .story-cast {
+    left: 1px;
+    right: 1px;
+    bottom: 8px;
+  }
+  .story-cast .sprite {
+    width: 40px;
+    height: 53px;
+  }
+  .story-spark {
+    left: 37px;
+    top: 35px;
+    font-size: 9px;
+  }
+  .story-copy h2 {
+    font-size: 21px;
+    margin: 6px 0;
+  }
+  .story-copy p {
+    font-size: 12px;
+    line-height: 1.65;
+  }
+  .story-kind {
+    font-size: 8px;
+    letter-spacing: 0.25px;
+  }
+  .story-cadence {
+    max-width: 140px;
+    font-size: 8px;
+  }
+  .story-progress {
+    margin: 0 -15px;
+  }
+  .story-controls .icon-button {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+@media (max-width: 360px) {
+  .story-slide {
+    min-height: 250px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-slide {
+    animation: none;
+  }
+  .story-progress span {
+    animation: none;
+    transform: scaleX(1);
+  }
+}

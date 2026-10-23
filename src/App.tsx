@@ -63,6 +63,7 @@ import { VampireAttack } from "./VampireAttack";
 import { useVoice } from "./voice/useVoice";
 import { VoicePanel, VoiceBadge } from "./voice/VoicePanel";
 import { useGameSounds } from "./sound/useGameSounds";
+import { LobbyStories } from "./LobbyStories";
 
 type Panel = "create" | "join" | "rules" | "theme" | "role" | null;
 function Modal({
@@ -848,124 +849,139 @@ export default function App() {
               />
             )}
             {game.phase === "lobby" ? (
-              <div className="lobby-layout">
-                <section className="paper-card invite-card">
-                  <div className="qr-frame">
-                    {qr ? (
-                      <img
-                        src={qr}
-                        alt={`Masaya katılma QR kodu, masa ${game.code}`}
-                      />
-                    ) : (
-                      <LoaderCircle className="spin" />
-                    )}
-                  </div>
-                  <h2>Bir kod, bütün arkadaşlar.</h2>
-                  <p>
-                    Kamerayı koda tut ya da linki gönder.
-                    <br />
-                    Birlikte oynayın, herkes kendi telefonunda.
-                  </p>
-                  <div className="room-code">
-                    <span>{game.code}</span>
-                    <button
-                      className="icon-button"
-                      aria-label="Masa kodunu kopyala"
-                      onClick={() => copy(game.code)}
-                    >
-                      <Copy size={18} />
-                    </button>
-                  </div>
-                  <button
-                    className="button secondary"
-                    onClick={() => copy(shareLink(game.code))}
-                  >
-                    <Link size={17} /> Davet linkini kopyala
-                  </button>
-                </section>
-                <section className="paper-card lobby-players">
-                  <div className="section-top">
-                    <h2>Köy ahalisi</h2>
-                    <span className="pill">
-                      <Users size={15} />
-                      {game.players.length}/24
-                    </span>
-                  </div>
-                  <div className="player-list">
-                    {game.players.length === 0 && (
-                      <div className="empty-village">
-                        <Users size={28} />
-                        <p>
-                          Henüz kimse gelmedi.
-                          <br />
-                          Davet linkini gönder, köy dolsun!
-                        </p>
-                      </div>
-                    )}
-                    {game.players.map((p) => (
-                      <div className="lobby-player" key={p.id}>
-                        <span className="number-badge">{p.number}</span>
-                        <span className="player-name">
-                          {p.name}
-                          {p.id === game.me?.id && <small> (sen)</small>}
-                        </span>
-                        <VoiceBadge playerId={p.id} voice={voice} />
-                        <span className={`presence ${p.online ? "" : "away"}`}>
-                          {p.online ? "Hazır" : "Bağlantı bekleniyor"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="lobby-settings">
-                    {game.settings.turn_based && (
-                      <span>
-                        <MessagesSquare size={15} /> Sıra bazlı konuşma · 2 tur
-                      </span>
-                    )}
-                    <span>
-                      <Clock size={15} />
-                      {game.settings.day_seconds} sn gündüz
-                    </span>
-                    <span>
-                      <Moon size={15} />
-                      {game.settings.night_seconds} sn gece
-                    </span>
-                    <span>Doktor: {roleModeLabels[game.settings.doctor]}</span>
-                    <span>Soytarı: {roleModeLabels[game.settings.jester]}</span>
-                  </div>
-                  {game.is_host ? (
-                    <button
-                      className="button primary full"
-                      disabled={game.players.length < 4 || busy}
-                      onClick={() => act("start")}
-                    >
-                      {busy ? (
-                        <LoaderCircle className="spin" size={20} />
+              <>
+                <LobbyStories
+                  key={game.code}
+                  code={game.code}
+                  startedAt={game.started_at}
+                  offset={offset}
+                />
+                <div className="lobby-layout">
+                  <section className="paper-card invite-card">
+                    <div className="qr-frame">
+                      {qr ? (
+                        <img
+                          src={qr}
+                          alt={`Masaya katılma QR kodu, masa ${game.code}`}
+                        />
                       ) : (
-                        <Play size={20} />
-                      )}{" "}
-                      {game.players.length < 4
-                        ? `${4 - game.players.length} arkadaş daha bekleniyor`
-                        : "Oyunu başlat"}
-                    </button>
-                  ) : (
-                    <div className="waiting-box">
-                      <LoaderCircle size={17} className="spin" /> Masayı kuran
-                      oyuncunun başlatması bekleniyor.
+                        <LoaderCircle className="spin" />
+                      )}
                     </div>
-                  )}
-                  <p className="small muted center">
-                    {game.is_observer ? (
-                      "Sen masa sahibisin. En az 4 oyuncu katılınca oyunu başlatabilirsin."
+                    <h2>Bir kod, bütün arkadaşlar.</h2>
+                    <p>
+                      Kamerayı koda tut ya da linki gönder.
+                      <br />
+                      Birlikte oynayın, herkes kendi telefonunda.
+                    </p>
+                    <div className="room-code">
+                      <span>{game.code}</span>
+                      <button
+                        className="icon-button"
+                        aria-label="Masa kodunu kopyala"
+                        onClick={() => copy(game.code)}
+                      >
+                        <Copy size={18} />
+                      </button>
+                    </div>
+                    <button
+                      className="button secondary"
+                      onClick={() => copy(shareLink(game.code))}
+                    >
+                      <Link size={17} /> Davet linkini kopyala
+                    </button>
+                  </section>
+                  <section className="paper-card lobby-players">
+                    <div className="section-top">
+                      <h2>Köy ahalisi</h2>
+                      <span className="pill">
+                        <Users size={15} />
+                        {game.players.length}/24
+                      </span>
+                    </div>
+                    <div className="player-list">
+                      {game.players.length === 0 && (
+                        <div className="empty-village">
+                          <Users size={28} />
+                          <p>
+                            Henüz kimse gelmedi.
+                            <br />
+                            Davet linkini gönder, köy dolsun!
+                          </p>
+                        </div>
+                      )}
+                      {game.players.map((p) => (
+                        <div className="lobby-player" key={p.id}>
+                          <span className="number-badge">{p.number}</span>
+                          <span className="player-name">
+                            {p.name}
+                            {p.id === game.me?.id && <small> (sen)</small>}
+                          </span>
+                          <VoiceBadge playerId={p.id} voice={voice} />
+                          <span
+                            className={`presence ${p.online ? "" : "away"}`}
+                          >
+                            {p.online ? "Hazır" : "Bağlantı bekleniyor"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="lobby-settings">
+                      {game.settings.turn_based && (
+                        <span>
+                          <MessagesSquare size={15} /> Sıra bazlı konuşma · 2
+                          tur
+                        </span>
+                      )}
+                      <span>
+                        <Clock size={15} />
+                        {game.settings.day_seconds} sn gündüz
+                      </span>
+                      <span>
+                        <Moon size={15} />
+                        {game.settings.night_seconds} sn gece
+                      </span>
+                      <span>
+                        Doktor: {roleModeLabels[game.settings.doctor]}
+                      </span>
+                      <span>
+                        Soytarı: {roleModeLabels[game.settings.jester]}
+                      </span>
+                    </div>
+                    {game.is_host ? (
+                      <button
+                        className="button primary full"
+                        disabled={game.players.length < 4 || busy}
+                        onClick={() => act("start")}
+                      >
+                        {busy ? (
+                          <LoaderCircle className="spin" size={20} />
+                        ) : (
+                          <Play size={20} />
+                        )}{" "}
+                        {game.players.length < 4
+                          ? `${4 - game.players.length} arkadaş daha bekleniyor`
+                          : "Oyunu başlat"}
+                      </button>
                     ) : (
-                      <>
-                        Sen #{game.me?.number} numaralı oyuncusun. Numaran oyun
-                        boyunca değişmez.
-                      </>
+                      <div className="waiting-box">
+                        <LoaderCircle size={17} className="spin" /> Masayı kuran
+                        oyuncunun başlatması bekleniyor.
+                      </div>
                     )}
-                  </p>
-                </section>
-              </div>
+                    <p className="small muted center">
+                      {game.is_observer ? (
+                        "Sen masa sahibisin. En az 4 oyuncu katılınca oyunu başlatabilirsin."
+                      ) : (
+                        <>
+                          Sen #{game.me?.number} numaralı oyuncusun. Numaran
+                          oyun boyunca değişmez.
+                        </>
+                      )}
+                    </p>
+                  </section>
+                </div>
+              </>
             ) : (
               <>
                 {game.phase === "dealing" || game.phase === "countdown" ? (
