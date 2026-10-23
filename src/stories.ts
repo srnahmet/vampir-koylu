@@ -234,24 +234,10 @@ export const villageStories: readonly VillageStory[] = [
   },
 ];
 
-// Public room code only: story choices reveal nothing about the room's roles.
-export function storyOrder(code: string) {
-  let seed = 2166136261;
-  for (const letter of code)
-    seed = Math.imul(seed ^ letter.charCodeAt(0), 16777619) >>> 0;
-  const order = villageStories.map((_, index) => index);
-  for (let i = order.length - 1; i > 0; i--) {
-    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-    const j = seed % (i + 1);
-    [order[i], order[j]] = [order[j], order[i]];
-  }
-  return order;
-}
-
-export function storyFrame(startedAt: number, now: number) {
-  const elapsed = Math.max(0, now - startedAt);
-  return {
-    turn: Math.floor(elapsed / storyInterval),
-    elapsed: elapsed % storyInterval,
-  };
+// A fresh local draw, independent of room data and private player roles.
+export function randomStoryIndex(previous: number | null = null) {
+  const choice = Math.floor(
+    Math.random() * (villageStories.length - (previous === null ? 0 : 1)),
+  );
+  return previous !== null && choice >= previous ? choice + 1 : choice;
 }

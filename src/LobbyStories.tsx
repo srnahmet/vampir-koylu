@@ -1,16 +1,9 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
-import { BookOpen, ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
+import { useEffect, useState } from "react";
+import { BookOpen } from "lucide-react";
 import { Sprite } from "./art";
 import {
-  storyFrame,
   storyInterval,
-  storyOrder,
+  randomStoryIndex,
   villageStories,
   type VillageStory,
 } from "./stories";
@@ -70,92 +63,18 @@ function StoryArtwork({ story }: { story: VillageStory }) {
   );
 }
 
-function StoryProgress({
-  elapsed,
-  paused,
-}: {
-  elapsed: number;
-  paused: boolean;
-}) {
-  const initialElapsed = useRef(elapsed).current;
-  return (
-    <div className="story-progress" aria-hidden="true">
-      <span
-        style={
-          {
-            animationDelay: `-${initialElapsed}ms`,
-            animationPlayState: paused ? "paused" : "running",
-          } as CSSProperties
-        }
-      />
-    </div>
-  );
-}
-
-export function LobbyStories({
-  code,
-  startedAt,
-  offset = 0,
-}: {
-  code: string;
-  startedAt: string;
-  offset?: number;
-}) {
-  const fallbackStart = useRef(Date.now());
-  const parsedStart = Date.parse(startedAt);
-  const start = Number.isFinite(parsedStart)
-    ? parsedStart
-    : fallbackStart.current;
-  const order = useMemo(() => storyOrder(code), [code]);
-  const [frame, setFrame] = useState(() =>
-    storyFrame(start, Date.now() + offset),
-  );
-  const [frozen, setFrozen] = useState<{
-    turn: number;
-    elapsed: number;
-  } | null>(null);
-  const [announcement, setAnnouncement] = useState("");
-  const paused = frozen !== null;
+export function LobbyStories() {
+  const [index, setIndex] = useState(() => randomStoryIndex());
 
   useEffect(() => {
-    if (paused) return;
-    let timer: ReturnType<typeof setTimeout>;
-    const tick = () => {
-      clearTimeout(timer);
-      if (document.hidden) return;
-      const next = storyFrame(start, Date.now() + offset);
-      setFrame((previous) => (previous.turn === next.turn ? previous : next));
-      timer = setTimeout(tick, storyInterval - next.elapsed + 10);
-    };
-    tick();
-    document.addEventListener("visibilitychange", tick);
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener("visibilitychange", tick);
-    };
-  }, [start, offset, paused]);
+    const timer = setTimeout(
+      () => setIndex(randomStoryIndex(index)),
+      storyInterval,
+    );
+    return () => clearTimeout(timer);
+  }, [index]);
 
-  const turn = frozen?.turn ?? frame.turn;
-  const index = ((turn % order.length) + order.length) % order.length;
-  const story = villageStories[order[index]];
-  function step(direction: number) {
-    const next = turn + direction;
-    setFrozen({ turn: next, elapsed: 0 });
-    const position = ((next % order.length) + order.length) % order.length;
-    setAnnouncement(
-      `${position + 1}. hikâye. ${villageStories[order[position]].title}. Akış duraklatıldı.`,
-    );
-  }
-  function togglePause() {
-    const current = storyFrame(start, Date.now() + offset);
-    setFrame(current);
-    setFrozen(paused ? null : { turn, elapsed: current.elapsed });
-    setAnnouncement(
-      paused
-        ? "Hikâyeler yeniden 15 saniyede bir değişecek."
-        : "Hikâye duraklatıldı.",
-    );
-  }
+  const story = villageStories[index];
   const kind =
     story.kind === "tip"
       ? "Oyun ipucu"
@@ -167,21 +86,14 @@ export function LobbyStories({
       className="lobby-stories paper-card"
       aria-label="Ateş başı hikâyeleri"
       aria-roledescription="slayt gösterisi"
+      aria-live="off"
     >
       <div className="story-heading">
         <span>
           <BookOpen size={16} /> Ateş başı hikâyeleri
         </span>
-        <span className="story-count">
-          {String(index + 1).padStart(2, "0")}{" "}
-          <span>/ {villageStories.length}</span>
-        </span>
       </div>
-      <article
-        className="story-slide"
-        key={story.id}
-        aria-label={`${index + 1}. hikâye`}
-      >
+      <article className="story-slide" key={story.id} aria-label={story.title}>
         <StoryArtwork story={story} />
         <div className="story-copy">
           <span className={`story-kind ${story.kind}`}>{kind}</span>
@@ -191,46 +103,12 @@ export function LobbyStories({
       </article>
       <div className="story-footer">
         <span className="story-cadence">
-          {paused
-            ? "Okumak için küçük bir mola"
-            : "Bunları biliyor muydun? · Her 15 saniyede yeni bir sır"}
+          Bunları biliyor muydun? · Her 15 saniyede yeni bir sır
         </span>
-        <div className="story-controls">
-          <button
-            className="icon-button"
-            aria-label="Önceki hikâye"
-            onClick={() => step(-1)}
-          >
-            <ChevronLeft size={17} />
-          </button>
-          <button
-            className="story-pause text-button"
-            aria-label={
-              paused ? "Hikâyeleri devam ettir" : "Hikâyeleri duraklat"
-            }
-            aria-pressed={paused}
-            onClick={togglePause}
-          >
-            {paused ? <Play size={13} /> : <Pause size={13} />}
-            <span>{paused ? "Devam et" : "Duraklat"}</span>
-          </button>
-          <button
-            className="icon-button"
-            aria-label="Sonraki hikâye"
-            onClick={() => step(1)}
-          >
-            <ChevronRight size={17} />
-          </button>
-        </div>
       </div>
-      <StoryProgress
-        key={`${turn}:${paused}`}
-        elapsed={frozen?.elapsed ?? frame.elapsed}
-        paused={paused}
-      />
-      <span className="story-announcement" role="status">
-        {announcement}
-      </span>
+      <div className="story-progress" aria-hidden="true">
+        <span key={story.id} />
+      </div>
     </section>
   );
 }

@@ -30,7 +30,7 @@ Gece, oylama, ölüm, idam, doktor kurtarışı, rol dağıtımı ve üç kazanm
 
 Masa kurulduktan sonra, oyuncular toplanırken **30 kısa hikâye ve oyun ipucu** piksel karakterleriyle gösterilir. Mevcut dört rolün yanında gelecekteki altı karakteri ve aralarındaki küçük köy hikâyelerini kapsar. Gelecek rollerle ilgili kartlarda **Yakında · Yeni roller** etiketi bulunur; bu kartlar masada o rolün bulunduğu anlamına gelmez.
 
-Kartlar **15 saniyede bir** değişir. Her masanın kendine ait karışık sırası vardır; tüm 30 kart dönmeden tekrar etmez. Masa kodu ve sunucuya göre düzeltilmiş ortak saat kullanıldığı için sonradan katılanlar da aynı akışı görür. Hikâyeler gizli rollerden veya oyuncu kimliklerinden etkilenmez. İleri/geri ve duraklat/devam et düğmeleriyle okunabilir; elle gezinmek akışı duraklatır. Arka plandaki sekmede zamanlayıcı durur, geri dönünce ortak sıraya yetişir. Oyun başlayınca hikâye alanı ve zamanlayıcısı kaldırılır. Ek sunucu sorgusu, medya indirmesi veya otomatik hikâye sesi yoktur.
+Kartlar her oyuncu için **15 saniyede bir rastgele** seçilir; aynı hikâye art arda gelmez. Hikâyenin sıra numarası ve toplam hikâye sayısı gösterilmez. Akış kendiliğinden ilerler; ileri/geri veya duraklatma kontrolü yoktur. Hikâyeler gizli rollerden veya oyuncu kimliklerinden etkilenmez. Oyun başlayınca hikâye alanı ve zamanlayıcısı kaldırılır. Ek sunucu sorgusu, medya indirmesi veya otomatik hikâye sesi yoktur.
 
 ## Küçük oyun efektleri
 

@@ -7,13 +7,12 @@ import { SoundPreview } from "./sound/SoundPreview";
 import { LobbyStories } from "./LobbyStories";
 export default function ScenePreview() {
   const [attack, setAttack] = useState<string | null>(null);
-  const [storyStart] = useState(() => new Date().toISOString());
   return (
     <main className="scene-preview">
       <VampireAttack eventKey={attack} />
       <h1>Köyden küçük hikâyeler</h1>
       <p>GISM 🤝 SPTLS · Piksel sahneleri</p>
-      <LobbyStories code="STORY1" startedAt={storyStart} />
+      <LobbyStories />
       <SoundPreview />
       <section className="paper-card" style={{ padding: 24, marginBottom: 24 }}>
         <Sprite role="vampire_cub" />

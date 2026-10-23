@@ -850,12 +850,7 @@ export default function App() {
             )}
             {game.phase === "lobby" ? (
               <>
-                <LobbyStories
-                  key={game.code}
-                  code={game.code}
-                  startedAt={game.started_at}
-                  offset={offset}
-                />
+                <LobbyStories key={game.code} />
                 <div className="lobby-layout">
                   <section className="paper-card invite-card">
                     <div className="qr-frame">
