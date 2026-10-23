@@ -4,6 +4,14 @@ Moderatörsüz, aynı masada herkesin kendi telefonundan oynadığı Türkçe pa
 
 GISM 🤝 SPTLS ortak yapımı.
 
+## Masa hakları ve gizli rol çekilişi
+
+Her tarayıcı kimliği son 60 dakikada en fazla **10 masa** kurabilir. Ana menüde kalan hak, kullanılan haklar ve sıradaki yenilenme süresi gösterilir. Her hak kendi kullanımından 60 dakika sonra geri gelir. Sayaç sunucudan okunur; sayfa yenilemek, sekme değiştirmek veya oyun bitirmek hakları sıfırlamaz. Başka masalara katılmak hak tüketmez. Aynı kurucunun eşzamanlı oluşturma istekleri veritabanında sıraya alınır.
+
+Doktor ve **Soytarı** için üç seçenek vardır: **Kesin olsun**, **Şansa bırak**, **Olmasın**. Şansa bırakılan her rol için oyun başlatılırken sunucuda bağımsız %50 çekiliş yapılır; iki rol de gelebilir, sadece biri gelebilir veya hiçbiri gelmeyebilir. Kurucu dahil kimse çekiliş sonucunu öğrenmez; herkes yalnızca kendi rolünü görür. Ayarlarda çekilişin sonucu yerine seçilen mod görünür. Doktor şansa bırakılmışsa doktor çıkmasa veya elenmiş olsa da gece ikinci asgari süreyi bekler; hiç doktor yokken hamle bekleyip kilitlenmez. Eski boolean rol ayarları desteklenir.
+
+Muhtar, Koruma, Avcı, Şaman ve Silahşör ana menüde kendilerine özel SVG piksel karakterleriyle **Yakında** olarak görünür. Bu beş rol seçilemez ve oyunda dağıtılmaz; özellikleri henüz oyuna eklenmemiştir.
+
 ## Paylaşım ekranı ve konuşma sırası
 
 Masa kurarken **Ben de oynayacağım** veya **Yalnızca masayı yönet** seçilir. İkinci seçenekte isim istenmez; kurucuya oyuncu kaydı, numara veya rol verilmez. Masa sahibi oyunu başlatıp ortak akışı izler. Ekranında özel rol kartı, gece hedefi veya oylama sırasında gizli oy sayıları bulunmaz. Oyun bitince açıklanan roller herkes için ortaktır. Başlamak için kurucu hariç en az 4 gerçek oyuncu gerekir.
@@ -44,7 +52,7 @@ Settings → Pages → Source: **GitHub Actions**. `main` dalına gönderilen he
 
 ## Oyun kuralları
 
-- 4–24 oyuncu; tam 1 vampir, isteğe bağlı 1 doktor ve 1 şarlatan, kalanlar köylü. Roller sunucuda rastgele dağıtılır. Numaralar sabit kalır.
+- 4–24 oyuncu; tam 1 vampir, isteğe bağlı en fazla 1 doktor ve 1 soytarı, kalanlar köylü. İsteğe bağlı roller kesin eklenebilir, şansa bırakılabilir veya kapatılabilir. Roller sunucuda rastgele dağıtılır. Numaralar sabit kalır.
 - Roller 7 saniye gösterilir, ardından 5 saniye geri sayım yapılır.
 - İlk konuşmadan sonra ilk gece başlar. İlk konuşmada idam yoktur; yaşayanların salt çoğunluğu ile geceye erken geçilebilir.
 - Sonraki gündüzlerde süre bitince oylama açılır. Yaşayanların yarısından fazlasının isteğiyle erken açılabilir.
@@ -53,7 +61,7 @@ Settings → Pages → Source: **GitHub Actions**. `main` dalına gönderilen he
 - Vampir hedefini seçer. Varsa yaşayan doktor, hedefi bilmeden sonrasında koruma seçer. Ölüm ancak iki aşama tamamlanınca uygulanır. Doktor hedef olmuş olsa bile o gece hamle yapar.
 - Her gece hamlesi en az belirlenen süre kadar sürer ve seçim yapılmadan tamamlanmaz. Doktor kendini tüm oyunda bir kez, başkalarını tekrar tekrar koruyabilir.
 - Vampir idam edilirse köylüler ve doktor, elenmiş olsalar da kazanır.
-- Şarlatan idam edilirse yalnızca şarlatan kazanır ve oyun anında biter. Gece öldürülürse kaybeder.
+- Soytarı idam edilirse yalnızca soytarı kazanır ve oyun anında biter. Gece öldürülürse kaybeder.
 - Vampir hayattayken 3 veya daha az yaşayan oyuncuyla gece başlayacaksa kazanır. Gece 4 kişiden 3 kişiye düşülmesi gündüzün oynanmasına engel olmaz.
 - Ölüm sonrası roller gizli kalır, oyun sonunda tüm roller açılır.
 - Bağlantısı kopan kişi aynı tarayıcıyla geri dönebilir. Masayı kuranın ayrılması devam eden oyunu durdurmaz. Eksik hamle veya oy varsa sınırsız beklenir; otomatik oyuncu eleme yoktur.
@@ -64,7 +72,7 @@ Süreler masa kurulurken ayarlanır: gündüz 30–1800 sn (varsayılan 300), he
 
 React + TypeScript + Vite. Fontlar ve tüm görseller projeyle birlikte gelir; harici font servisi veya görsel servisi gerekmez. Karakter ve köy illüstrasyonları SVG'dir. Mobil tarayıcılar için manifest, güvenli alanlar, dokunma hedefleri, klavye erişimi ve azaltılmış hareket desteği bulunur.
 
-Oyun motoru PostgreSQL fonksiyonlarıdır. `vk_private` şeması HTTP API'ye açık değildir. Tablolarda RLS açık, istemcilere doğrudan tablo izni yoktur. Altı dar kapsamlı RPC, oturum kimliğini, masa üyeliğini, rolü, hedefi ve aşamayı kontrol eder. Roller sadece sahibi için döndürülür. İzleyici kurucu için `me` alanı `null` döner. Tur kilidi eşzamanlı hamleleri sıraya koyar; aşama ve konuşma sırası numaraları eski istekleri reddeder. Zamanı veritabanı belirler. İstemciler 1,8 saniyede bir durumu alır; host telefonuna veya ayrıca zamanlayıcı servisine bağımlılık yoktur.
+Oyun motoru PostgreSQL fonksiyonlarıdır. `vk_private` şeması HTTP API'ye açık değildir. Tablolarda RLS açık, istemcilere doğrudan tablo izni yoktur. Yedi dar kapsamlı RPC, oturum kimliğini, masa üyeliğini, rolü, hedefi ve aşamayı kontrol eder. Roller sadece sahibi için döndürülür. İzleyici kurucu için `me` alanı `null` döner. Tur kilidi eşzamanlı hamleleri sıraya koyar; aşama ve konuşma sırası numaraları eski istekleri reddeder. Zamanı veritabanı belirler. İstemciler 1,8 saniyede bir durumu alır; host telefonuna veya ayrıca zamanlayıcı servisine bağımlılık yoktur.
 
 `supabase/setup.sql`, mevcut kurulumu da yükseltir. Sütunları ekler ve fonksiyonları yeniler; mevcut masa ve oyuncuları silmez. Eksik yeni ayarlar eski masalarda varsayılan davranışı korur.
 
@@ -73,10 +81,10 @@ npm test
 npm run build
 ```
 
-Testler aynı SQL dosyasını PGlite üzerinde gerçek PostgreSQL motorunda çalıştırır. Çoğunluk, berabere oylar, süre sınırları, gizli oylar, rol dağıtımı, doktor, şarlatan, kazanma anı ve yetkisiz erişim senaryolarını kapsar.
+Testler aynı SQL dosyasını PGlite üzerinde gerçek PostgreSQL motorunda çalıştırır. Çoğunluk, berabere oylar, süre sınırları, gizli oylar, rol dağıtımı, doktor, soytarı, kazanma anı ve yetkisiz erişim senaryolarını kapsar.
 
 ## İşletim notları
 
 Misafir kimliği aynı tarayıcıda saklanır. Tarayıcı verileri silinirse veya başka telefona geçilirse aynı kimlik geri alınamaz. Ücretsiz Supabase projesi hareketsizlikten duraklatılabilir; gerekirse panelden uyandırılır. İnternet gerekir. Yeni anonim girişler sağlayıcının hız sınırına tabidir; mevcut oturumlar tekrar kullanılır.
 
-Masalara yeni katılım 24 saat sonra kapanır. Kayıtlar otomatik silinmez; kullanım büyüdüğünde eski masalar için saklama süresi/temizleme görevi eklenmelidir. İsim dışında kişisel veri istenmez. Aynı kurucunun açabileceği masa sayısına saatlik sınır uygulanmaz; biten oyunlardan sonra yeni masa açılabilir. Bu sürüm, arkadaş gruplarıyla kullanım için hazırlanmıştır.
+Masalara yeni katılım 24 saat sonra kapanır. Kayıtlar otomatik silinmez; kullanım büyüdüğünde eski masalar için saklama süresi/temizleme görevi eklenmelidir. İsim dışında kişisel veri istenmez. Aynı kurucu son 60 dakikada 10 masa açabilir. Kalan haklar ana menüde görünür; kullanılan her hak 60 dakika sonra yenilenir. Bu sürüm, arkadaş gruplarıyla kullanım için hazırlanmıştır.

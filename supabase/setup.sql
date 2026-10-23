@@ -1,4 +1,4 @@
--- Vampir Köylü v2. Idempotent upgrade: preserves existing rooms and players.
+-- Vampir Köylü v3. Idempotent upgrade: preserves existing rooms and players.
 -- Secrets, roles and ballots live in an unexposed schema. Clients only call RPCs.
 begin;
 create schema if not exists vk_private;
@@ -68,6 +68,17 @@ begin
  return auth.uid();
 end $$;
 
+-- Accept v1/v2 boolean settings as well as the new three-way role options.
+create or replace function vk_private.role_mode(raw jsonb, role_key text) returns text
+language plpgsql immutable set search_path = '' as $$
+declare mode text:=coalesce(raw->>role_key,'never');
+begin
+ if mode='true' then return 'always'; end if;
+ if mode='false' then return 'never'; end if;
+ if mode not in ('always','random','never') then raise exception 'Geçersiz rol seçeneği.'; end if;
+ return mode;
+end $$;
+
 create or replace function vk_private.settings(raw jsonb) returns jsonb
 language plpgsql immutable set search_path = '' as $$
 declare d int; n int; v int; e int; t text;
@@ -82,7 +93,7 @@ begin
  end if;
  if t not in ('classic','lavender','forest','peach') then t := 'classic'; end if;
  return jsonb_build_object('day_seconds',d,'night_seconds',n,'vote_seconds',v,'runoff_seconds',e,
-  'doctor',coalesce((raw->>'doctor')::boolean,false),'jester',coalesce((raw->>'jester')::boolean,false),'theme',t,
+  'doctor',vk_private.role_mode(raw,'doctor'),'jester',vk_private.role_mode(raw,'jester'),'theme',t,
   'host_plays',coalesce((raw->>'host_plays')::boolean,true),'turn_based',coalesce((raw->>'turn_based')::boolean,false));
 end $$;
 
@@ -122,11 +133,14 @@ begin
  when 'night' then
   if r.night_step='vampire' then
    if r.victim is null then return; end if;
-   if exists(select 1 from vk_private.players where room_id=rid and alive and role='doctor') then
+   -- Random mode always reserves the second slot, even with no living doctor.
+   -- Its duration and public phase sequence must not reveal the hidden draw.
+   if vk_private.role_mode(r.settings,'doctor')='random'
+      or exists(select 1 from vk_private.players where room_id=rid and alive and role='doctor') then
     r.night_step:='doctor'; dur:=(r.settings->>'night_seconds')::int;
    else r.night_step:='resolve'; end if;
   elsif r.night_step='doctor' then
-   if r.protected is null then return; end if;
+   if r.protected is null and exists(select 1 from vk_private.players where room_id=rid and alive and role='doctor') then return; end if;
    r.night_step:='resolve';
   end if;
   if r.night_step='resolve' then
@@ -183,6 +197,24 @@ begin
   speech_order=r.speech_order,speech_turn=r.speech_turn,speech_slot_ms=r.speech_slot_ms,speech_ends_at=r.speech_ends_at where id=rid;
 end $$;
 
+create or replace function vk_private.room_quota(uid uuid) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare used int; next_at timestamptz;
+begin
+ select count(*) into used from vk_private.rooms where host_id=uid and created_at>now()-interval '1 hour';
+ select created_at+interval '1 hour' into next_at from vk_private.rooms
+  where host_id=uid and created_at>now()-interval '1 hour'
+  order by created_at offset greatest(used-10,0) limit 1;
+ return jsonb_build_object('limit',10,'used',used,'remaining',greatest(0,10-used),
+  'next_refresh_at',next_at,'server_now',now());
+end $$;
+
+create or replace function public.vk_quota() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+begin
+ return vk_private.room_quota(vk_private.require_user());
+end $$;
+
 create or replace function public.vk_create(p_name text, p_settings jsonb default '{}') returns text
 language plpgsql security definer set search_path = '' as $$
 declare uid uuid:=vk_private.require_user(); rid uuid; c text; cfg jsonb;
@@ -190,6 +222,11 @@ begin
  cfg:=vk_private.settings(p_settings);
  if (cfg->>'host_plays')::boolean and (p_name is null or char_length(btrim(p_name)) not between 1 and 20) then
   raise exception 'İsmin 1–20 karakter olmalı.';
+ end if;
+ -- Serialize creations by this host, including requests from different tabs.
+ perform pg_advisory_xact_lock(hashtextextended(uid::text,0));
+ if (vk_private.room_quota(uid)->>'remaining')::int=0 then
+  raise exception 'Son 1 saatte 10 masa açtın. Bir hakkın yenilenince yeniden masa kurabilirsin.';
  end if;
  loop
   c:=upper(substr(replace(gen_random_uuid()::text,'-',''),1,6));
@@ -225,7 +262,7 @@ end $$;
 create or replace function public.vk_start(p_code text) returns void
 language plpgsql security definer set search_path = '' as $$
 declare uid uuid:=vk_private.require_user(); r vk_private.rooms; ids uuid[];
- idx int:=2;
+ idx int:=2; doctor_mode text; jester_mode text;
 begin
  select * into r from vk_private.rooms where code=upper(btrim(p_code)) for update;
  if not found or r.host_id<>uid then raise exception 'Oyunu yalnızca masayı kuran kişi başlatabilir.'; end if;
@@ -234,10 +271,13 @@ begin
  if coalesce(cardinality(ids),0)<4 then raise exception 'Başlamak için en az 4 kişi gerekli.'; end if;
  update vk_private.players set role='villager',alive=true where room_id=r.id;
  update vk_private.players set role='vampire' where id=ids[1];
- if (r.settings->>'doctor')::boolean then
+ doctor_mode:=vk_private.role_mode(r.settings,'doctor');
+ jester_mode:=vk_private.role_mode(r.settings,'jester');
+ -- Independent server-side coin flips. Never write outcomes to public settings.
+ if doctor_mode='always' or (doctor_mode='random' and random()<0.5) then
   update vk_private.players set role='doctor' where id=ids[idx]; idx:=idx+1;
  end if;
- if (r.settings->>'jester')::boolean then update vk_private.players set role='jester' where id=ids[idx]; end if;
+ if jester_mode='always' or (jester_mode='random' and random()<0.5) then update vk_private.players set role='jester' where id=ids[idx]; end if;
  update vk_private.rooms set phase='dealing',seq=seq+1,started_at=now(),ends_at=now()+interval '7 seconds' where id=r.id;
 end $$;
 
@@ -316,7 +356,7 @@ begin
    'speaker_id',speaker_id,'ends_at',r.speech_ends_at,'slot_ms',r.speech_slot_ms,'group',speaker_id is null);
  end if;
  return jsonb_build_object('code',r.code,'phase',r.phase,'seq',r.seq,'day',r.day,
-  'started_at',r.started_at,'ends_at',r.ends_at,'server_now',now(),'settings',r.settings,
+  'started_at',r.started_at,'ends_at',r.ends_at,'server_now',now(),'settings',vk_private.settings(r.settings),
   'is_host',r.host_id=uid,'is_observer',observer,'players',plist,'winner',r.winner,'announcement',r.announcement,'events',r.events,
   'me',case when observer then null else jsonb_build_object('id',me.id,'number',me.number,'name',me.name,'alive',me.alive,
     'role',case when r.phase<>'lobby' then me.role else null end,'self_heal_used',me.self_heal_used,'eliminated_by',me.eliminated_by) end,
@@ -347,6 +387,6 @@ end $$;
 
 revoke all on all tables in schema vk_private from public,anon,authenticated;
 revoke all on all functions in schema vk_private from public,anon,authenticated;
-revoke all on function public.vk_create(text,jsonb),public.vk_join(text,text),public.vk_start(text),public.vk_act(text,int,text,uuid),public.vk_state(text),public.vk_speak(text,int,int) from public,anon;
-grant execute on function public.vk_create(text,jsonb),public.vk_join(text,text),public.vk_start(text),public.vk_act(text,int,text,uuid),public.vk_state(text),public.vk_speak(text,int,int) to authenticated;
+revoke all on function public.vk_quota(),public.vk_create(text,jsonb),public.vk_join(text,text),public.vk_start(text),public.vk_act(text,int,text,uuid),public.vk_state(text),public.vk_speak(text,int,int) from public,anon;
+grant execute on function public.vk_quota(),public.vk_create(text,jsonb),public.vk_join(text,text),public.vk_start(text),public.vk_act(text,int,text,uuid),public.vk_state(text),public.vk_speak(text,int,int) to authenticated;
 commit;

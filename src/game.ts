@@ -1,13 +1,48 @@
 import { createClient } from "@supabase/supabase-js";
 export type Role = "villager" | "vampire" | "doctor" | "jester";
+export type RoleMode = "always" | "random" | "never";
+export type UpcomingRole =
+  | "mayor"
+  | "bodyguard"
+  | "hunter"
+  | "shaman"
+  | "gunslinger";
+export type ArtworkRole = Role | UpcomingRole;
+export type RoomQuota = {
+  limit: number;
+  used: number;
+  remaining: number;
+  next_refresh_at: string | null;
+  server_now: string;
+};
+export const roleModeLabels: Record<RoleMode, string> = {
+  always: "Kesin olsun",
+  random: "Şansa bırak",
+  never: "Olmasın",
+};
+export const upcomingRoles: {
+  id: UpcomingRole;
+  name: string;
+  flavor: string;
+}[] = [
+  { id: "mayor", name: "Muhtar", flavor: "Köy meydanının tanıdık yüzü." },
+  { id: "bodyguard", name: "Koruma", flavor: "Kalkanı hazır, gözü kapıda." },
+  { id: "hunter", name: "Avcı", flavor: "Ormandan yeni izlerle geliyor." },
+  { id: "shaman", name: "Şaman", flavor: "Rüzgâr ona bir şeyler fısıldıyor." },
+  {
+    id: "gunslinger",
+    name: "Silahşör",
+    flavor: "Şapkasının altında yeni bir sır.",
+  },
+];
 export type Theme = "classic" | "lavender" | "forest" | "peach";
 export type Settings = {
   day_seconds: number;
   night_seconds: number;
   vote_seconds: number;
   runoff_seconds: number;
-  doctor: boolean;
-  jester: boolean;
+  doctor: RoleMode;
+  jester: RoleMode;
   theme: Theme;
   host_plays: boolean;
   turn_based: boolean;
@@ -17,8 +52,8 @@ export const defaults: Settings = {
   night_seconds: 15,
   vote_seconds: 20,
   runoff_seconds: 60,
-  doctor: false,
-  jester: false,
+  doctor: "never",
+  jester: "never",
   theme: "classic",
   host_plays: true,
   turn_based: false,
@@ -88,7 +123,7 @@ export const roles: Record<
     description:
       "Gündüz ipuçlarını birleştir, şüphelileri dinle ve oyunu kullan. Gece gizli bir hamlen yok.",
     win: "Vampir idam edilirse köy takımı kazanır. Sen elensen de takımın kazanabilir.",
-    lose: "Vampir veya şarlatan kazanırsa köy takımı kaybeder.",
+    lose: "Vampir veya soytarı kazanırsa köy takımı kaybeder.",
     color: "#e6ae54",
   },
   vampire: {
@@ -97,7 +132,7 @@ export const roles: Record<
     description:
       "Her gece hayatta olan başka bir oyuncuyu gizlice hedefle. Gündüz kimliğini belli etme!",
     win: "Hayattayken 3 veya daha az kişiyle geceye girersen kazanırsın.",
-    lose: "İdam edilirsen kaybedersin. Şarlatan idam edilirse de oyun onun olur.",
+    lose: "İdam edilirsen kaybedersin. Soytarı idam edilirse de oyun onun olur.",
     color: "#a594d1",
   },
   doctor: {
@@ -106,11 +141,11 @@ export const roles: Record<
     description:
       "Vampirin ardından, hedefini bilmeden birini koru. Kendini tüm oyunda yalnızca 1 kez koruyabilirsin; başkalarını tekrar koruyabilirsin.",
     win: "Vampir idam edilirse köy takımıyla kazanırsın. Elenmiş olman bunu değiştirmez.",
-    lose: "Vampir veya şarlatan kazanırsa kaybedersin.",
+    lose: "Vampir veya soytarı kazanırsa kaybedersin.",
     color: "#7cbda7",
   },
   jester: {
-    name: "Şarlatan",
+    name: "Soytarı",
     tag: "BİRAZ ŞÜPHELİ OL",
     description:
       "Amacın köyü senin vampir olduğuna inandırmak. Tartışmayı biraz karıştır!",
@@ -155,12 +190,21 @@ export const db = createClient(url, key, {
     detectSessionInUrl: false,
   },
 });
+let signingIn: Promise<void> | null = null;
 export async function session() {
   const { data, error } = await db.auth.getSession();
   if (error) throw error;
   if (!data.session) {
-    const { error } = await db.auth.signInAnonymously();
-    if (error) throw error;
+    // Allowance loading and a quick tap on Create must share one identity.
+    signingIn ||= db.auth
+      .signInAnonymously()
+      .then(({ error }) => {
+        if (error) throw error;
+      })
+      .finally(() => {
+        signingIn = null;
+      });
+    await signingIn;
   }
 }
 export async function rpc<T>(

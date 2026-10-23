@@ -1,12 +1,12 @@
 import { useId } from "react";
-import type { Role } from "./game";
+import type { ArtworkRole } from "./game";
 
 export function Sprite({
   role = "villager",
   className = "",
   neutral = false,
 }: {
-  role?: Role;
+  role?: ArtworkRole;
   className?: string;
   neutral?: boolean;
 }) {
@@ -15,6 +15,11 @@ export function Sprite({
     vampire: "#6f598e",
     doctor: "#77b39e",
     jester: "#d87f8d",
+    mayor: "#577f8d",
+    bodyguard: "#779897",
+    hunter: "#7d995e",
+    shaman: "#9b83b5",
+    gunslinger: "#a36e63",
   }[role];
   return (
     <svg
@@ -29,7 +34,12 @@ export function Sprite({
               villager: "Köylü",
               vampire: "Vampir",
               doctor: "Doktor",
-              jester: "Şarlatan",
+              jester: "Soytarı",
+              mayor: "Muhtar",
+              bodyguard: "Koruma",
+              hunter: "Avcı",
+              shaman: "Şaman",
+              gunslinger: "Silahşör",
             }[role]
       }
     >
@@ -77,6 +87,88 @@ export function Sprite({
           <path d="M3 8H29V11H3M8 3H24V8H8" fill="#e5bc6c" />
           <path d="M8 7H24V9H8" fill="#b48243" />
           <path d="M12 25H14V33H12M20 25H22V33H20" fill="#765943" />
+        </>
+      )}
+      {role === "mayor" && (
+        <>
+          <path d="M7 3H25V10H7M5 8H27V11H5" fill="#3d5265" />
+          <path d="M11 3H21V5H11M8 8H24V10H8" fill="#9fb2b5" />
+          <path d="M12 20H16V19H18V20H22V22H18V21H16V22H12" fill="#d3c6b2" />
+          <path d="M11 24H14V33H11M20 24H23V33H20" fill="#324b60" />
+          <path d="M13 25H21V28H13" fill="#dcb96c" />
+          <path d="M2 27H10V35H2" fill="#f3e3b7" />
+          <path d="M3 29H8V30H3M3 31H7V32H3" fill="#aa8f65" />
+          <path d="M5 33H8V36H5" fill="#c17c79" />
+        </>
+      )}
+      {role === "bodyguard" && (
+        <>
+          <path d="M6 6H9V2H23V6H26V15H23V11H9V15H6" fill="#71888e" />
+          <path d="M9 5H23V10H9M14 1H18V10H14" fill="#aebfc0" />
+          <path d="M8 10H24V13H8" fill="#425d68" />
+          <path
+            d="M7 24H12V28H7M21 24H26V28H21M14 26H19V33H14"
+            fill="#bbcecb"
+          />
+          <path d="M0 24H11V33H9V36H3V33H0" fill="#395f71" />
+          <path d="M2 26H9V32H7V34H4V32H2" fill="#83b7b0" />
+          <path d="M4 27H7V32H4M3 29H8V30H3" fill="#edd493" />
+          <path d="M27 23H29V35H27" fill="#a8bbbc" />
+          <path d="M25 31H31V33H25" fill="#d5b277" />
+        </>
+      )}
+      {role === "hunter" && (
+        <>
+          <path
+            d="M4 12V7H8V3H23V7H27V17H24V10H21V8H10V11H7V18H4"
+            fill="#526f48"
+          />
+          <path d="M8 5H22V7H8M6 8H9V11H6" fill="#9bb47a" />
+          <path d="M7 23H13V26H19V29H25V32H19V29H13V26H7" fill="#866747" />
+          <path d="M22 25H26V34H22M23 26H25V28H23" fill="#c59b62" />
+          <path d="M29 15H31V19H33V33H31V37H29V33H31V19H29" fill="#b68b54" />
+          <path d="M29 16V36M27 26H34" stroke="#e6d4a1" strokeWidth="1" />
+          <path d="M2 20H5V34H2M1 17H3V25H1M4 15H6V23H4" fill="#7b5945" />
+          <path d="M0 14H3V18H0M4 12H7V16H4" fill="#e3c37d" />
+        </>
+      )}
+      {role === "shaman" && (
+        <>
+          <path
+            d="M4 12V7H8V3H24V7H28V15H25V10H22V8H10V11H7V16H4"
+            fill="#735d91"
+          />
+          <path
+            d="M5 5H8V1H5V-2H3V3H5M24 5H27V2H29V-2H27V0H25V3H24"
+            fill="#b79979"
+          />
+          <path d="M8 8H24V11H8M13 6H19V10H13" fill="#6db6b1" />
+          <path d="M15 7H18V10H15M9 14H12V16H9M21 14H24V16H21" fill="#f1d792" />
+          <path d="M11 24H21V27H11M14 27H18V30H14" fill="#d5c29e" />
+          <path d="M10 30H13V33H10M19 30H22V33H19" fill="#6eb4ad" />
+          <path d="M29 13H31V38H29" fill="#88664c" />
+          <path d="M26 10H34V16H32V19H28V16H26" fill="#69b6bc" />
+          <path d="M28 11H31V15H28" fill="#c3e0d2" />
+          <path d="M24 6H26V8H24M34 19H36V21H34" fill="#edce84" />
+        </>
+      )}
+      {role === "gunslinger" && (
+        <>
+          <path d="M2 8H30V12H2M8 2H24V9H8M11 0H21V3H11" fill="#765047" />
+          <path d="M8 6H24V9H8" fill="#d9b77b" />
+          <path d="M7 23H12V34H7M21 23H26V34H21" fill="#815349" />
+          <path d="M12 24H21V27H12M13 27H19V30H13" fill="#e1c38d" />
+          <path
+            d="M8 24H11V27H14V30H17V33H20V35H17V32H14V29H11V26H8"
+            fill="#513f3b"
+          />
+          <path
+            d="M10 25H12V27H10M13 28H15V30H13M16 31H18V33H16"
+            fill="#ddb56c"
+          />
+          <path d="M25 27H33V30H29V34H26V31H25" fill="#4e4d57" />
+          <path d="M28 27H34V29H28" fill="#bbc2be" />
+          <path d="M26 31H29V35H26" fill="#bc8b5d" />
         </>
       )}
     </svg>

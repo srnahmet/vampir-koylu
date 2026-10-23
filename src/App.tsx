@@ -40,6 +40,8 @@ import {
   defaults,
   friendlyError,
   roles,
+  roleModeLabels,
+  upcomingRoles,
   rpc,
   session,
   themes,
@@ -48,11 +50,14 @@ import {
   type Role,
   type Settings,
   type Theme,
+  type RoomQuota,
 } from "./game";
 import { Sprite, Village } from "./art";
 import { EventScene } from "./EventScene";
 import { SpeechPanel } from "./SpeechPanel";
 import { EarlyAdvance } from "./EarlyAdvance";
+import { RoomAllowance } from "./RoomAllowance";
+import { RoleOptions } from "./RoleOptions";
 
 type Panel = "create" | "join" | "rules" | "theme" | "role" | null;
 function Modal({
@@ -196,8 +201,8 @@ function Rules() {
       </ol>
       <div className="rule-box">
         Vampir 3 veya daha az kişiyle geceye girerse kazanır. Vampir idam
-        edilirse köy, şarlatan idam edilirse yalnızca şarlatan kazanır.
-        Ölenlerin rolleri oyun sonunda açılır.
+        edilirse köy, soytarı idam edilirse yalnızca soytarı kazanır. Ölenlerin
+        rolleri oyun sonunda açılır.
       </div>
       <p className="small muted">
         Bağlantın koparsa aynı tarayıcıdan dön. Numaran ve rolün korunur. Seçim
@@ -220,6 +225,43 @@ export default function App() {
   const [roomInput, setRoomInput] = useState(invite);
   const [name, setName] = useState(localStorage.getItem("vk-name") || "");
   const [cfg, setCfg] = useState<Settings>({ ...defaults });
+  const [quota, setQuota] = useState<RoomQuota | null>(null);
+  const [quotaError, setQuotaError] = useState("");
+  const [quotaOffset, setQuotaOffset] = useState(0);
+  const loadQuota = useCallback(async () => {
+    try {
+      await session();
+      const start = Date.now();
+      const data = await rpc<RoomQuota>("vk_quota", {});
+      setQuotaOffset(Date.parse(data.server_now) - (start + Date.now()) / 2);
+      setQuota(data);
+      setQuotaError("");
+    } catch (e) {
+      setQuotaError(friendlyError(e));
+    }
+  }, []);
+  useEffect(() => {
+    if (code) return;
+    void loadQuota();
+    const timer = setInterval(() => void loadQuota(), 15000);
+    const visible = () => {
+      if (document.visibilityState === "visible") void loadQuota();
+    };
+    document.addEventListener("visibilitychange", visible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", visible);
+    };
+  }, [code, loadQuota]);
+  useEffect(() => {
+    if (code || !quota?.next_refresh_at) return;
+    const delay = Date.parse(quota.next_refresh_at) - Date.now() - quotaOffset;
+    const timer = setTimeout(
+      () => void loadQuota(),
+      Math.max(250, delay + 100),
+    );
+    return () => clearTimeout(timer);
+  }, [code, quota?.next_refresh_at, quotaOffset, loadQuota]);
   const [theme, setTheme] = useState<Theme>(
     (localStorage.getItem("vk-theme") as Theme) || "classic",
   );
@@ -375,6 +417,7 @@ export default function App() {
       setError(friendlyError(e));
     } finally {
       setBusy(false);
+      if (create) void loadQuota();
     }
   }
   async function act(action: string, target: string | null = null) {
@@ -545,6 +588,7 @@ export default function App() {
                 <div className="hero-actions">
                   <button
                     className="button primary"
+                    disabled={quota?.remaining === 0}
                     onClick={() => {
                       setCfg({ ...defaults, theme });
                       open("create");
@@ -559,6 +603,12 @@ export default function App() {
                     <Link size={19} /> Masaya katıl
                   </button>
                 </div>
+                <RoomAllowance
+                  quota={quota}
+                  offset={quotaOffset}
+                  error={quotaError}
+                  onRefresh={() => void loadQuota()}
+                />
                 <div className="hero-meta">
                   <span>
                     <Users size={15} /> 4–24 oyuncu
@@ -648,6 +698,43 @@ export default function App() {
                             : "Şüpheleri üstüne çek. İdam edil, kazan."}
                     </p>
                   </article>
+                ))}
+              </div>
+            </section>
+            <section
+              className="upcoming-section"
+              aria-labelledby="upcoming-title"
+            >
+              <div className="section-top">
+                <div>
+                  <span className="eyebrow">KÖYE YENİ YÜZLER GELİYOR</span>
+                  <h2 id="upcoming-title">Bavullar hazır. Sırlar da.</h2>
+                </div>
+                <span className="small muted">
+                  Yeni roller henüz oynanamıyor.
+                </span>
+              </div>
+              <div className="upcoming-grid">
+                {upcomingRoles.map((role) => (
+                  <button
+                    type="button"
+                    disabled
+                    className={`upcoming-role ${role.id}`}
+                    key={role.id}
+                    aria-label={`${role.name} — Yakında, henüz oynanamıyor`}
+                  >
+                    <span className="upcoming-portrait">
+                      <span className="pixel-glimmer" aria-hidden="true">
+                        ✦
+                      </span>
+                      <Sprite role={role.id} />
+                    </span>
+                    <span className="upcoming-role-name">{role.name}</span>
+                    <span className="upcoming-flavor">{role.flavor}</span>
+                    <span className="upcoming-label">
+                      <LockKeyhole size={12} /> YAKINDA
+                    </span>
+                  </button>
                 ))}
               </div>
             </section>
@@ -824,12 +911,8 @@ export default function App() {
                       <Moon size={15} />
                       {game.settings.night_seconds} sn gece
                     </span>
-                    <span>
-                      {game.settings.doctor ? "Doktor var" : "Doktor yok"}
-                    </span>
-                    <span>
-                      {game.settings.jester ? "Şarlatan var" : "Şarlatan yok"}
-                    </span>
+                    <span>Doktor: {roleModeLabels[game.settings.doctor]}</span>
+                    <span>Soytarı: {roleModeLabels[game.settings.jester]}</span>
                   </div>
                   {game.is_host ? (
                     <button
@@ -944,14 +1027,14 @@ export default function App() {
                       {game.winner === "village"
                         ? "Köy huzura kavuştu!"
                         : game.winner === "jester"
-                          ? "Şarlatan hepinizi kandırdı!"
+                          ? "Soytarı hepinizi kandırdı!"
                           : "Bu gece köy vampirin!"}
                     </h2>
                     <p>
                       {game.winner === "village"
                         ? "Vampir idam edildi. Köylüler ve doktor kazandı."
                         : game.winner === "jester"
-                          ? "Şarlatan idam edildi ve tek başına kazandı."
+                          ? "Soytarı idam edildi ve tek başına kazandı."
                           : "Vampir hayattayken 3 veya daha az oyuncuyla geceye girildi."}
                     </p>
                     <div className="final-roles">
@@ -1333,27 +1416,18 @@ export default function App() {
                 <span className="small muted">İsteğe bağlı roller</span>
               </div>
               {(["doctor", "jester"] as const).map((role) => (
-                <label className="role-toggle" key={role}>
-                  <Sprite role={role} />
-                  <span>
-                    <strong>{roles[role].name}</strong>
-                    <small>
-                      {role === "doctor"
-                        ? "Her gece bir kişiyi korur."
-                        : "İdam edilirse tek başına kazanır."}
-                    </small>
-                  </span>
-                  <input
-                    type="checkbox"
-                    aria-label={`${roles[role].name} rolünü ekle`}
-                    checked={cfg[role]}
-                    onChange={(e) =>
-                      setCfg({ ...cfg, [role]: e.target.checked })
-                    }
-                  />
-                  <span className="switch" />
-                </label>
+                <RoleOptions
+                  key={role}
+                  role={role}
+                  value={cfg[role]}
+                  onChange={(mode) => setCfg({ ...cfg, [role]: mode })}
+                />
               ))}
+              <p className="small muted">
+                Şansa bırakılan roller birbirinden bağımsız çekilir. Doktor
+                gelmese de gece aynı iki aşamayı bekler; çekiliş sonucu
+                sürelerden anlaşılmaz.
+              </p>
             </div>
             <div className="form-section">
               <h3>Herkesin sesi duyulsun</h3>
@@ -1486,7 +1560,11 @@ export default function App() {
               </p>
             )}
             <button
-              disabled={busy || (cfg.host_plays && !name.trim())}
+              disabled={
+                busy ||
+                quota?.remaining === 0 ||
+                (cfg.host_plays && !name.trim())
+              }
               className="button primary full"
               type="submit"
             >
@@ -1497,6 +1575,13 @@ export default function App() {
               )}{" "}
               Masayı oluştur <ArrowRight size={18} />
             </button>
+            <p className="small muted center">
+              {quota?.remaining === 0
+                ? "Masa kurma hakkın doldu. Yeni hak gelene kadar başka bir masaya katılabilirsin."
+                : quota
+                  ? `${quota.remaining}/${quota.limit} masa kurma hakkın kaldı.`
+                  : ""}
+            </p>
             <p className="small muted center">
               {cfg.host_plays
                 ? "Moderatör yok. Sen de köyün bir oyuncususun."

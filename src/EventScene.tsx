@@ -21,7 +21,7 @@ const labels: Record<SceneKind, string> = {
   saved: "Doktorun koruma kalkanıyla güvende kalan köy sakini",
   village_win: "Güneşli köy meydanında köylülerin zafer kutlaması",
   vampire_win: "Ayın altında zaferini kutlayan vampir",
-  jester_win: "Konfetiler arasında zafer dansı yapan şarlatan",
+  jester_win: "Konfetiler arasında zafer dansı yapan soytarı",
   roles: "Gizli rollerin dağıtıldığı soru işaretli kartlar",
   discussion: "Köy meydanındaki konuşma kürsüsü",
 };
@@ -290,7 +290,7 @@ export function EventScene({
             saved: "İYİ Kİ DOKTOR VAR",
             village_win: "KÖYÜMÜZ GÜVENDE",
             vampire_win: "GECENİN KAZANANI",
-            jester_win: "SON GÜLEN ŞARLATAN",
+            jester_win: "SON GÜLEN SOYTARI",
             roles: "HERKESE BİR KÜÇÜK SIR",
             discussion: "SÖZ KÖY AHALİSİNDE",
           }[kind]
