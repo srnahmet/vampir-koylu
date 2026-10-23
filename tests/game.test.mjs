@@ -81,6 +81,21 @@ test("Database game rules and access boundaries", async (t) => {
     );
   });
   await t.test(
+    "the same host can create more than five rooms in an hour",
+    async () => {
+      const host = randomUUID();
+      const codes = [];
+      for (let i = 0; i < 8; i++)
+        codes.push(await api(host, "vk_create", ["Masa sahibi"]));
+      assert.equal(new Set(codes).size, 8);
+      for (const code of codes) {
+        const s = await api(host, "vk_state", [code]);
+        assert.equal(s.is_host, true);
+        assert.equal(s.me.number, 1);
+      }
+    },
+  );
+  await t.test(
     "numbers are consecutive, stable, and reconnect is idempotent",
     async () => {
       const g = await make(4);
@@ -280,6 +295,49 @@ test("Database game rules and access boundaries", async (t) => {
       const s = await state(g);
       assert.equal(s.winner, "jester");
       assert.equal(s.phase, "finished");
+      for (let i = 0; i < g.users.length; i++) {
+        const viewer = await state(g, i);
+        assert.equal(viewer.winner, "jester");
+        assert.equal(viewer.me.role, p[i].role);
+        assert.equal(viewer.me.alive, p[i].id !== j.id);
+      }
+      await expire(g);
+      assert.equal((await state(g)).winner, "jester");
+    },
+  );
+  await t.test(
+    "jester wins when the final ballot arrives after timeout at a three-player endgame",
+    async () => {
+      const g = await make(4, { doctor: true, jester: true });
+      await start(g);
+      const p = await allPlayers(g);
+      const vi = p.findIndex((p) => p.role === "vampire");
+      const di = p.findIndex((p) => p.role === "doctor");
+      const ji = p.findIndex((p) => p.role === "jester");
+      const victim = p.find((p) => p.role === "villager");
+      await force(g, "night", ",night_step='vampire',victim=null,protected=null");
+      await act(g, vi, "kill", victim.id);
+      await expire(g);
+      await state(g);
+      await act(g, di, "protect", p[vi].id);
+      await expire(g);
+      assert.equal((await state(g)).phase, "night_result");
+      await expire(g);
+      assert.equal((await state(g)).phase, "day");
+      await expire(g);
+      assert.equal((await state(g)).phase, "voting");
+      await act(g, vi, "vote", p[ji].id);
+      await act(g, di, "vote", p[ji].id);
+      await expire(g);
+      assert.equal((await state(g)).phase, "voting");
+      await act(g, ji, "vote", p[vi].id);
+      const s = await state(g, ji);
+      assert.equal(s.phase, "finished");
+      assert.equal(s.winner, "jester");
+      assert.equal(s.me.role, "jester");
+      assert.equal(s.me.eliminated_by, "village");
+      assert.equal(s.announcement.kind, "execution");
+      assert.equal(s.announcement.number, p[ji].number);
     },
   );
   await t.test(
@@ -364,6 +422,21 @@ test("Database game rules and access boundaries", async (t) => {
       assert.equal(s.players.find((p) => p.id === j.id).alive, false);
       assert.equal(s.winner, null);
       assert.equal(s.players.find((p) => p.id === j.id).role, null);
+      // A night death must never turn into a jester win later in the game.
+      await expire(g);
+      await state(g);
+      await expire(g);
+      assert.equal((await state(g)).phase, "voting");
+      for (let i = 0; i < p.length; i++) {
+        if (p[i].id === j.id) continue;
+        await act(g, i, "vote", i === vi ? p[di].id : p[vi].id);
+      }
+      await expire(g);
+      const result = await state(g, p.findIndex((p) => p.id === j.id));
+      assert.equal(result.phase, "finished");
+      assert.equal(result.winner, "village");
+      assert.equal(result.me.role, "jester");
+      assert.equal(result.me.eliminated_by, "vampire");
     },
   );
   await t.test(

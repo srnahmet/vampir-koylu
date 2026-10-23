@@ -191,10 +191,6 @@ begin
  if (cfg->>'host_plays')::boolean and (p_name is null or char_length(btrim(p_name)) not between 1 and 20) then
   raise exception 'İsmin 1–20 karakter olmalı.';
  end if;
- if (select count(*) from vk_private.rooms where host_id=uid and created_at>now()-interval '1 hour')>=5 then
-  raise exception 'Bu saat yeterince masa kurdun. Mevcut masana dönebilirsin.';
- end if;
- cfg:=vk_private.settings(p_settings);
  loop
   c:=upper(substr(replace(gen_random_uuid()::text,'-',''),1,6));
   begin

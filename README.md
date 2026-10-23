@@ -79,4 +79,4 @@ Testler aynı SQL dosyasını PGlite üzerinde gerçek PostgreSQL motorunda çal
 
 Misafir kimliği aynı tarayıcıda saklanır. Tarayıcı verileri silinirse veya başka telefona geçilirse aynı kimlik geri alınamaz. Ücretsiz Supabase projesi hareketsizlikten duraklatılabilir; gerekirse panelden uyandırılır. İnternet gerekir. Yeni anonim girişler sağlayıcının hız sınırına tabidir; mevcut oturumlar tekrar kullanılır.
 
-Masalara yeni katılım 24 saat sonra kapanır. Kayıtlar otomatik silinmez; kullanım büyüdüğünde eski masalar için saklama süresi/temizleme görevi eklenmelidir. İsim dışında kişisel veri istenmez. Yeni masa kurma, oyuncu başına saatte 5 ile sınırlıdır. Bu sürüm, arkadaş gruplarıyla kullanım için hazırlanmıştır.
+Masalara yeni katılım 24 saat sonra kapanır. Kayıtlar otomatik silinmez; kullanım büyüdüğünde eski masalar için saklama süresi/temizleme görevi eklenmelidir. İsim dışında kişisel veri istenmez. Aynı kurucunun açabileceği masa sayısına saatlik sınır uygulanmaz; biten oyunlardan sonra yeni masa açılabilir. Bu sürüm, arkadaş gruplarıyla kullanım için hazırlanmıştır.
