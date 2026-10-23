@@ -644,7 +644,7 @@ dialog {
 }
 .upcoming-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-top: 22px;
 }
@@ -846,9 +846,6 @@ dialog {
   color: var(--muted);
 }
 @media (max-width: 900px) {
-  .upcoming-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
   .room-allowance {
     margin-left: auto;
     margin-right: auto;
