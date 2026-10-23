@@ -30,12 +30,13 @@ test("Hourly allowances and secret optional role draws", async (t) => {
       ["Kurucu", JSON.stringify(settings)],
       ["", "::jsonb"],
     );
-  async function make(settings) {
+  async function make(settings, count = 4) {
     const host = randomUUID();
-    const users = Array.from({ length: 4 }, () => randomUUID());
+    const users = Array.from({ length: count }, () => randomUUID());
     const code = await create(host, { host_plays: false, ...settings });
     for (let i = 0; i < users.length; i++)
       await rpc(users[i], "vk_join", [code, `Kişi ${i + 1}`]);
+    for (const uid of users) await rpc(uid, "vk_ready", [code, 0, true]);
     await rpc(host, "vk_start", [code]);
     const players = await q(
       "select p.* from vk_private.players p join vk_private.rooms r on r.id=p.room_id where r.code=$1 order by p.number",
@@ -159,7 +160,7 @@ test("Hourly allowances and secret optional role draws", async (t) => {
     "random doctor slot has the same public sequence and minimum duration when present, absent or dead",
     async () => {
       for (const doctorStatus of ["present", "absent", "dead"]) {
-        const g = await make({ doctor: "random", jester: "never" });
+        const g = await make({ doctor: "random", jester: "never" }, 5);
         await q(
           "update vk_private.players set role='villager' where room_id=$1 and role='doctor'",
           [g.players[0].room_id],

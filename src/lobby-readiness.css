@@ -1,0 +1,11 @@
+.lobby-readiness { display: grid; gap: 12px; margin-top: 18px; }
+.ready-summary { display: flex; gap: 10px; align-items: center; border: 1px dashed var(--line); border-radius: 9px; padding: 12px; color: var(--muted); }
+.ready-summary.all-ready { color: var(--accent-dark); background: var(--soft); border-style: solid; }
+.ready-summary strong { display: block; font-size: 12px; }
+.ready-summary small { display: block; font-size: 10px; margin-top: 3px; }
+.lobby-readiness .button { font-size: 12px; }
+.lobby-readiness p { margin: 0; }
+.lobby-player .presence.preparing { color: var(--muted); }
+.rematch-controls { display: grid; justify-items: center; gap: 12px; margin-top: 24px; }
+.rematch-controls p { max-width: 430px; margin: 0; line-height: 1.65; }
+.rematch-controls .text-button { font-size: 11px; }

@@ -1,0 +1,10 @@
+.connection-countdown { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.player-status { display: grid; justify-items: end; gap: 3px; margin-left: auto; }
+.kick-player { color: var(--muted); flex-shrink: 0; width: 30px; height: 30px; }
+.kick-player:hover { color: #ac5357; background: #ac535712; }
+.sidebar-player > .player-status { flex: 0 1 auto; }
+.room-security { margin-top: 20px; }
+.pin-field { margin-top: 12px; }
+.pin-field input { letter-spacing: .3em; font-variant-numeric: tabular-nums; }
+.departure-notice { display: flex; gap: 9px; align-items: center; padding: 12px 16px; border: 1px dashed var(--line); background: var(--card); border-radius: 10px; margin: 14px 0; font-size: 12px; }
+@media (max-width: 480px) { .lobby-player { flex-wrap: wrap; gap: 8px; } .lobby-player .player-status { max-width: 125px; } .sidebar-player { flex-wrap: wrap; } }

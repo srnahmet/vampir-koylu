@@ -46,6 +46,7 @@ test("Observer, early transitions, and two-round speaking", async (t) => {
       [g.code],
     );
   async function intro(g) {
+    for (const uid of g.users) await rpc(uid, "vk_ready", [g.code, 0, true]);
     await rpc(g.host, "vk_start", [g.code]);
     await expire(g);
     await state(g);
@@ -97,6 +98,7 @@ test("Observer, early transitions, and two-round speaking", async (t) => {
       await assert.rejects(() => rpc(g.host, "vk_start", [g.code]), /en az 4/);
       const uid = randomUUID();
       await rpc(uid, "vk_join", [g.code, "Dördüncü"]);
+      for (const player of [...g.users, uid]) await rpc(player, "vk_ready", [g.code, 0, true]);
       await rpc(g.host, "vk_start", [g.code]);
       const s = await state(g);
       assert.deepEqual(

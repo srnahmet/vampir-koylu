@@ -578,7 +578,7 @@ export class VoiceController {
       this.failures++;
       this.stopMic();
       const text = String((e as { message?: string })?.message || e);
-      if (/başka sekmede|katılmalısın|Masa bulunamadı/i.test(text)) {
+      if (/başka sekmede|katılmalısın|masadan çıkarıldın|Masa bulunamadı/i.test(text)) {
         this.disconnect();
         this.emit({ error: text });
         return;

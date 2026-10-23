@@ -96,6 +96,7 @@ export default function VoicePreview() {
       });
       for (let i = 1; i < 4; i++)
         await apis[i]("vk_join", { p_code: code, p_name: `Ses QA ${i + 1}` });
+      for (const api of apis) await api("vk_ready", { p_code: code, p_seq: 0, p_ready: true });
       await apis[0]("vk_start", { p_code: code });
       const players = await q(
         "select p.* from vk_private.players p join vk_private.rooms r on p.room_id=r.id where r.code=$1 order by p.number",

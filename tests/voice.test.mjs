@@ -40,6 +40,7 @@ test("Voice room access, signaling isolation and speaking permissions", async (t
     );
     for (let i = 0; i < 4; i++)
       await rpc(users[i], "vk_join", [code, `Kişi ${i + 1}`]);
+    for (const uid of users) await rpc(uid, "vk_ready", [code, 0, true]);
     await rpc(host, "vk_start", [code]);
     const p = await q(
       "select p.* from vk_private.players p join vk_private.rooms r on r.id=p.room_id where r.code=$1 order by number",
@@ -120,6 +121,7 @@ test("Voice room access, signaling isolation and speaking permissions", async (t
     "deadlines, elimination, night and voting close microphones; group and runoff allow living players",
     async () => {
       const g = await make();
+      await q("update vk_private.players set role=case when id=$1 then 'vampire' else 'villager' end where room_id=$2", [g.p[1].id,g.p[0].room_id]);
       await sync(g, 0);
       await q(
         "update vk_private.rooms set speech_ends_at=now()-interval '1 second' where code=$1",
@@ -143,6 +145,7 @@ test("Voice room access, signaling isolation and speaking permissions", async (t
         (await sync(g, 0, { join: false, mic: true })).can_speak,
         false,
       );
+      await q("update vk_private.players set alive=true where id=$1", [g.p[0].id]);
       for (const phase of [
         "night",
         "voting",

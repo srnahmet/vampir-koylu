@@ -64,6 +64,8 @@ import { useVoice } from "./voice/useVoice";
 import { VoicePanel, VoiceBadge } from "./voice/VoicePanel";
 import { useGameSounds } from "./sound/useGameSounds";
 import { LobbyStories } from "./LobbyStories";
+import { LobbyReadiness, RematchControls } from "./LobbyReadiness";
+import { ConnectionStatus, KickButton, eliminationText } from "./RoomManagement";
 
 type Panel = "create" | "join" | "rules" | "theme" | "role" | null;
 function Modal({
@@ -208,11 +210,13 @@ function Rules() {
       <div className="rule-box">
         Vampir 3 veya daha az kişiyle geceye girerse kazanır. Vampir idam
         edilirse köy, soytarı idam edilirse yalnızca soytarı kazanır. Ölenlerin
-        rolleri oyun sonunda açılır.
+        rolleri oyun sonunda açılır. Bağlantı veya çıkarma sonrası vampirle
+        birlikte yalnızca 2 kişi kalırsa da vampir kazanır.
       </div>
       <p className="small muted">
-        Bağlantın koparsa aynı tarayıcıdan dön. Numaran ve rolün korunur. Seçim
-        yapmayan biri varsa oyun onu bekler; otomatik eleme yoktur.
+        Bağlantın koparsa masada belirlenen bekleme süresi içinde aynı tarayıcıdan dön.
+        Numaran ve rolün korunur. Süre dolarsa o turdan elenirsin; oyun kalan oyuncularla devam eder.
+        Soytarı bağlantı nedeniyle elenerek kazanamaz. Vampir elenirse köy kazanır.
       </p>
     </div>
   );
@@ -230,6 +234,7 @@ export default function App() {
   );
   const [roomInput, setRoomInput] = useState(invite);
   const [name, setName] = useState(localStorage.getItem("vk-name") || "");
+  const [roomPin, setRoomPin] = useState("");
   const [cfg, setCfg] = useState<Settings>({ ...defaults });
   const [quota, setQuota] = useState<RoomQuota | null>(null);
   const [quotaError, setQuotaError] = useState("");
@@ -297,6 +302,15 @@ export default function App() {
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute("content", activeNight ? "#28273c" : "#f7f1e3");
   }, [actualTheme, activeNight]);
+  const removed = useCallback((e: unknown) => {
+    if ((e as { code?: string })?.code !== "VK001") return false;
+    codeRef.current = "";
+    localStorage.removeItem("vk-room");
+    setCode(""); setGame(null); setPanel(null); setError(""); setConnectionError("");
+    setNotice("Masa sahibi seni masadan çıkardı.");
+    history.replaceState(null, "", location.pathname);
+    return true;
+  }, []);
   const refresh = useCallback(async () => {
     if (!code) return;
     const start = Date.now();
@@ -331,7 +345,7 @@ export default function App() {
         if (stopped) return;
         await refresh();
       } catch (e) {
-        if (!stopped) setConnectionError(friendlyError(e));
+        if (!stopped && !removed(e)) setConnectionError(friendlyError(e));
       } finally {
         polling = false;
         if (!stopped) t = setTimeout(poll, 1800);
@@ -350,10 +364,13 @@ export default function App() {
       clearTimeout(t);
       document.removeEventListener("visibilitychange", visible);
     };
-  }, [code, refresh]);
+  }, [code, refresh, removed]);
   useEffect(() => {
     setSelected(null);
   }, [game?.code, game?.seq]);
+  useEffect(() => {
+    if (selected && !game?.players.some(p => p.id === selected && p.alive)) setSelected(null);
+  }, [game?.players, selected]);
   useEffect(() => {
     if (!notice) return;
     const t = setTimeout(() => setNotice(""), 3500);
@@ -392,6 +409,7 @@ export default function App() {
     setConnectionError("");
     setCode(c);
     setPanel(null);
+    setRoomPin("");
     const u = new URL(location.href);
     u.searchParams.set("oda", c);
     history.replaceState(null, "", u);
@@ -402,13 +420,14 @@ export default function App() {
     setError("");
     try {
       await session();
-      const c = create
-        ? await rpc<string>("vk_create", {
-            p_name: cfg.host_plays ? name : "",
-            p_settings: cfg,
-          })
-        : await rpc<string>("vk_join", { p_name: name, p_code: roomInput });
-      enter(c);
+      if (create) {
+        const c = await rpc<string>("vk_create", { p_name: cfg.host_plays ? name : "", p_settings: cfg, p_pin: cfg.pin_enabled ? roomPin : null });
+        enter(c);
+      } else {
+        const result = await rpc<{ code?: string; error?: string }>("vk_enter", { p_name: name, p_code: roomInput, p_pin: roomPin || null });
+        if (result.error || !result.code) throw new Error(result.error || "Masaya katılınamadı.");
+        enter(result.code);
+      }
     } catch (e) {
       setError(friendlyError(e));
     } finally {
@@ -422,6 +441,9 @@ export default function App() {
     setError("");
     try {
       if (action === "start") await rpc("vk_start", { p_code: code });
+      else if (action === "ready") await rpc("vk_ready", { p_code: code, p_seq: game.seq, p_ready: !game.me?.ready });
+      else if (action === "kick") await rpc("vk_kick", { p_code: code, p_seq: game.seq, p_target: target });
+      else if (action === "rematch") await rpc("vk_rematch", { p_code: code, p_seq: game.seq });
       else if (action === "speak")
         await rpc("vk_speak", {
           p_code: code,
@@ -438,8 +460,10 @@ export default function App() {
       await refresh();
       setSelected(null);
     } catch (e) {
-      setError(friendlyError(e));
-      await refresh().catch(() => {});
+      if (!removed(e)) {
+        setError(friendlyError(e));
+        await refresh().catch(removed);
+      }
     } finally {
       setBusy(false);
     }
@@ -462,6 +486,7 @@ export default function App() {
     history.replaceState(null, "", location.pathname);
   }
   function open(p: Panel) {
+    setRoomPin("");
     setError("");
     setPanel(p);
   }
@@ -506,7 +531,7 @@ export default function App() {
           game.me &&
           !game.me.alive &&
           game.me.eliminated_by === "vampire"
-            ? `${game.code}:${game.me.id}`
+            ? `${game.code}:${game.round_number || 1}:${game.me.id}`
             : null
         }
       />
@@ -793,9 +818,10 @@ export default function App() {
               <span className="pill">
                 MASA <strong>{game.code}</strong>
               </span>
+              {game.round_number > 1 && <span className="pill">Rövanş · {game.round_number}. oyun</span>}
               {game.is_observer ? (
                 <span className="observer-badge">
-                  <Monitor size={15} /> Paylaşım ekranı
+                  <Monitor size={15} /> {game.is_host ? "Paylaşım ekranı" : "İzleyici"}
                 </span>
               ) : (
                 <button
@@ -811,7 +837,7 @@ export default function App() {
               <div className="observer-notice">
                 <Monitor size={18} />
                 <span>
-                  <strong>Masayı yönetiyorsun.</strong> Oyuncu değilsin; bu
+                  <strong>{game.is_host ? "Masayı yönetiyorsun." : "Bu turu izliyorsun."}</strong> Oyuncu değilsin; bu
                   ekran gizli rolleri ve gece hedeflerini göstermez. Ekranını
                   paylaşabilirsin.
                 </span>
@@ -840,6 +866,7 @@ export default function App() {
                 />
               )}
             </div>
+            {game.announcement?.kind === "departure" && game.phase !== "finished" && <div className="departure-notice" role="status"><WifiOff size={18} /><span>{game.announcement.text}</span></div>}
             <VoicePanel game={game} voice={voice} />
             {["intro", "day", "runoff"].includes(game.phase) && (
               <EarlyAdvance
@@ -913,15 +940,17 @@ export default function App() {
                             {p.id === game.me?.id && <small> (sen)</small>}
                           </span>
                           <VoiceBadge playerId={p.id} voice={voice} />
-                          <span
-                            className={`presence ${p.online ? "" : "away"}`}
-                          >
-                            {p.online ? "Hazır" : "Bağlantı bekleniyor"}
+                          <span className="player-status">
+                            <span className={`presence ${!p.online ? "away" : p.ready ? "" : "preparing"}`}>{!p.online ? "Bağlantı bekleniyor" : p.ready ? "Hazır" : "Hazırlanıyor"}</span>
+                            <ConnectionStatus player={p} offset={offset} />
                           </span>
+                          <KickButton game={game} player={p} busy={busy} onKick={(id) => act("kick", id)} />
                         </div>
                       ))}
                     </div>
                     <div className="lobby-settings">
+                      {game.settings.pin_enabled && <span><LockKeyhole size={15} /> Şifreli masa</span>}
+                      <span><WifiOff size={15} /> Bağlantı bekleme · {game.settings.disconnect_seconds || 60} sn</span>
                       {game.settings.turn_based && (
                         <span>
                           <MessagesSquare size={15} /> Sıra bazlı konuşma · 2
@@ -943,30 +972,12 @@ export default function App() {
                         Soytarı: {roleModeLabels[game.settings.jester]}
                       </span>
                     </div>
-                    {game.is_host ? (
-                      <button
-                        className="button primary full"
-                        disabled={game.players.length < 4 || busy}
-                        onClick={() => act("start")}
-                      >
-                        {busy ? (
-                          <LoaderCircle className="spin" size={20} />
-                        ) : (
-                          <Play size={20} />
-                        )}{" "}
-                        {game.players.length < 4
-                          ? `${4 - game.players.length} arkadaş daha bekleniyor`
-                          : "Oyunu başlat"}
-                      </button>
-                    ) : (
-                      <div className="waiting-box">
-                        <LoaderCircle size={17} className="spin" /> Masayı kuran
-                        oyuncunun başlatması bekleniyor.
-                      </div>
-                    )}
+                    <LobbyReadiness game={game} busy={busy} onToggle={() => act("ready")} onStart={() => act("start")} />
                     <p className="small muted center">
-                      {game.is_observer ? (
-                        "Sen masa sahibisin. En az 4 oyuncu katılınca oyunu başlatabilirsin."
+                      {game.is_host && game.is_observer ? (
+                        "Sen masa sahibisin. En az 4 oyuncu hazır olduğunda oyunu başlatabilirsin."
+                      ) : game.is_observer ? (
+                        "Şu anda masa dolu. Bir koltuk boşalınca hazırlığa katılabilirsin."
                       ) : (
                         <>
                           Sen #{game.me?.number} numaralı oyuncusun. Numaran
@@ -1062,10 +1073,10 @@ export default function App() {
                     </h2>
                     <p>
                       {game.winner === "village"
-                        ? "Vampir idam edildi. Köylüler ve doktor kazandı."
+                        ? "Vampir oyun dışı kaldı. Köylüler ve doktor kazandı."
                         : game.winner === "jester"
                           ? "Soytarı idam edildi ve tek başına kazandı."
-                          : "Vampir hayattayken 3 veya daha az oyuncuyla geceye girildi."}
+                          : "Vampir hayatta ve köyü ele geçirecek kadar az oyuncu kaldı."}
                     </p>
                     <div className="final-roles">
                       {game.players.map((p) => (
@@ -1078,16 +1089,11 @@ export default function App() {
                         </div>
                       ))}
                     </div>
-                    <button
-                      className="button primary"
-                      onClick={() => {
+                    <RematchControls game={game} busy={busy} onRematch={() => act("rematch")} onNewTable={() => {
                         home();
                         setCfg({ ...defaults, theme });
                         open("create");
-                      }}
-                    >
-                      <Plus size={18} /> Yeni bir masa kur
-                    </button>
+                      }} />
                   </section>
                 ) : (
                   <div className="play-layout">
@@ -1097,7 +1103,7 @@ export default function App() {
                         <div className="announcement" aria-live="polite">
                           <EventScene
                             kind={
-                              game.announcement?.kind === "saved"
+                              game.announcement?.kind === "departure" ? "discussion" : game.announcement?.kind === "saved"
                                 ? "saved"
                                 : game.phase === "execution"
                                   ? "execution"
@@ -1274,9 +1280,7 @@ export default function App() {
                         <div className="spectator">
                           <Eye size={18} />
                           <span>
-                            {game.me?.eliminated_by === "vampire"
-                              ? "Vampir tarafından öldürüldün."
-                              : "Köyün kararıyla idam edildin."}{" "}
+                            {eliminationText(game.me?.eliminated_by)}{" "}
                             İzleyici olarak köyü takip edebilirsin; rolünü gizli
                             tut.
                           </span>
@@ -1301,14 +1305,10 @@ export default function App() {
                             {p.id === game.me?.id && <small> (sen)</small>}
                           </span>
                           <VoiceBadge playerId={p.id} voice={voice} />
-                          {p.alive ? (
-                            <span
-                              className={`presence-dot ${p.online ? "" : "away"}`}
-                              title={p.online ? "Bağlı" : "Bağlantı bekleniyor"}
-                            />
-                          ) : (
-                            <span className="small">Elendi</span>
-                          )}
+                          <span className="player-status">
+                            {p.alive ? <><span className={`presence-dot ${p.online ? "" : "away"}`} title={p.online ? "Bağlı" : "Bağlantı bekleniyor"} /><ConnectionStatus player={p} offset={offset} /></> : <span className="small">{p.eliminated_by === "disconnected" ? "Bağlantı · elendi" : p.eliminated_by === "kicked" ? "Çıkarıldı" : "Elendi"}</span>}
+                          </span>
+                          <KickButton game={game} player={p} busy={busy} onKick={(id) => act("kick", id)} />
                         </div>
                       ))}
                       {game.me ? (
@@ -1332,7 +1332,7 @@ export default function App() {
                         <div className="my-identity observer-identity">
                           <Monitor size={18} />
                           <span>
-                            Masayı yönetiyorsun.
+                            {game.is_host ? "Masayı yönetiyorsun." : "Bu turu izliyorsun."}
                             <br />
                             Gizli rolün veya oyun numaran yok.
                           </span>
@@ -1460,6 +1460,15 @@ export default function App() {
                 sürelerden anlaşılmaz.
               </p>
             </div>
+            <div className="form-section room-security">
+              <h3>Masaya kimler gelsin?</h3>
+              <label className="role-toggle">
+                <span className="feature-symbol"><LockKeyhole size={22} /></span>
+                <span><strong>Şifreli masa</strong><small>Davet koduna ek olarak 4 haneli şifre sorulsun.</small></span>
+                <input type="checkbox" aria-label="Şifreli masa" checked={cfg.pin_enabled} onChange={(e) => { setCfg({ ...cfg, pin_enabled: e.target.checked }); setRoomPin(""); }} /><span className="switch" />
+              </label>
+              {cfg.pin_enabled && <label className="field pin-field">Masa şifresi<input type="password" inputMode="numeric" autoComplete="new-password" required pattern="[0-9]{4}" minLength={4} maxLength={4} placeholder="4 rakam" value={roomPin} onChange={(e) => setRoomPin(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))} /><small>Şifreyi arkadaşlarına ayrıca ilet. Link ve QR kod şifreyi içermez.</small></label>}
+            </div>
             <div className="form-section">
               <h3>Herkesin sesi duyulsun</h3>
               <label className="role-toggle speaking-toggle">
@@ -1562,6 +1571,7 @@ export default function App() {
                       min: 15,
                       max: 300,
                     },
+                    { key: "disconnect_seconds", label: "Bağlantı kopunca bekleme", min: 30, max: 600 },
                   ] as const
                 ).map((x) => (
                   <label className="field" key={x.key}>
@@ -1594,7 +1604,7 @@ export default function App() {
               </div>
               <p className="small muted">
                 Gece ve oylama, süre dolsa da tüm gerekli seçimler tamamlanana
-                kadar bekler.
+                kadar bekler. Bağlantısı kopan oyuncu, bekleme süresi dolarsa o turdan elenir.
               </p>
             </details>
             <div className="form-section">
@@ -1694,11 +1704,8 @@ export default function App() {
                 autoComplete="nickname"
               />
             </label>
-            {error && (
-              <p className="error" role="alert">
-                {error}
-              </p>
-            )}
+            <label className="field pin-field">Masa şifresi (varsa)<input type="password" inputMode="numeric" autoComplete="off" pattern="[0-9]{4}" maxLength={4} placeholder="Şifresiz masa için boş bırak" value={roomPin} onChange={(e) => setRoomPin(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))} /></label>
+            {error && <p className="error" role="alert">{error}</p>}
             <button
               className="button primary full"
               disabled={busy || !name.trim() || roomInput.length !== 6}

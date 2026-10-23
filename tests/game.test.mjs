@@ -53,6 +53,8 @@ test("Database game rules and access boundaries", async (t) => {
     );
   }
   async function start(g) {
+    const lobby = await state(g);
+    for (const uid of g.users) await api(uid, "vk_ready", [g.code, lobby.seq, true]);
     await api(g.users[0], "vk_start", [g.code]);
     return state(g);
   }
@@ -183,6 +185,8 @@ test("Database game rules and access boundaries", async (t) => {
       const g = await make(6);
       await start(g);
       const p = await allPlayers(g);
+      // Keep the vampire alive: its departure now correctly ends the game.
+      if (p[5].role === "vampire") await query("update vk_private.players set role=case when id=$1 then 'vampire' else 'villager' end where id in ($1,$2)", [p[4].id,p[5].id]);
       await query("update vk_private.players set alive=false where id=$1", [
         p[5].id,
       ]);

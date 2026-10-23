@@ -88,17 +88,27 @@ Settings → Pages → Source: **GitHub Actions**. `main` dalına gönderilen he
 - Soytarı idam edilirse yalnızca soytarı kazanır ve oyun anında biter. Gece öldürülürse kaybeder.
 - Vampir hayattayken 3 veya daha az yaşayan oyuncuyla gece başlayacaksa kazanır. Gece 4 kişiden 3 kişiye düşülmesi gündüzün oynanmasına engel olmaz.
 - Ölüm sonrası roller gizli kalır, oyun sonunda tüm roller açılır.
-- Bağlantısı kopan kişi aynı tarayıcıyla geri dönebilir. Masayı kuranın ayrılması devam eden oyunu durdurmaz. Eksik hamle veya oy varsa sınırsız beklenir; otomatik oyuncu eleme yoktur.
+- Bağlantısı kopan kişi varsayılan 60 saniye içinde aynı tarayıcıyla dönerse rolüyle devam eder. Süre dolarsa o turdan elenir; geç dönerse yalnızca izler. Vampir bu şekilde elenirse köy kazanır; Soytarı yalnızca idamla kazanır. Çoğunluk yaşayanlara göre hesaplanır; ayrılanın oyları ve ona verilen oylar kaldırılır, hedefi düşenler yeniden seçer. Geceye 3 kişiyle girme kuralına ek olarak, bağlantı/çıkarma nedeniyle vampirle toplam 2 kişi kalırsa oyun vampirin zaferiyle biter.
 
-Süreler masa kurulurken ayarlanır: gündüz 30–1800 sn (varsayılan 300), her gece hamlesi 15–120 sn (15), oylama 20–120 sn (20), ek tartışma 15–300 sn (60). Oyun içi sonuç duyuruları 7 sn sürer. Çok vampirli mod, "Yakında" bilgisiyle kapalıdır.
+Süreler masa kurulurken ayarlanır: gündüz 30–1800 sn (varsayılan 300), her gece hamlesi 15–120 sn (15), oylama 20–120 sn (20), ek tartışma 15–300 sn (60), bağlantı bekleme 30–600 sn (60). Oyun içi sonuç duyuruları 7 sn sürer. Çok vampirli mod, "Yakında" bilgisiyle kapalıdır.
+
+## Hazırlık, rövanş ve masa yönetimi
+
+Lobide her oyuncu **Hazırım** düğmesiyle kendi durumunu değiştirir. En az dört gerçek oyuncu, hepsi hazır ve bağlı olmadan başlatılamaz. İzleyici masa sahibi hazır sayısına dahil değildir. Oyun sonunda yalnızca kurucu **Aynı masada rövanş** açar: kod, numaralar, ayarlar ve şifre korunur; herkes yeniden hazır olur ve roller yeniden çekilir. Yeni masa hakkı harcanmaz. Aşama numarası sürekli artar; eski oylar ve hamleler rövanşa taşınmaz. Eski ses bağlantıları kapatılır.
+
+**Şifreli masa** isteğe bağlıdır ve kapalı başlar. Açılınca tam dört rakam gerekir; baştaki sıfırlar korunur. Şifre URL, QR, tarayıcı depolaması veya durum yanıtına eklenmez. Veritabanında masaya özel tuzla SHA-256 özeti tutulur. Aynı misafir kimliğinin aynı masada beş hatalı denemesi beş dakika bekletilir. Önceden katılmış üyeler aynı tarayıcıyla şifreyi yeniden girmeden dönebilir. Eski katılma RPC’si yeni üyeler için şifreyi atlayamaz.
+
+Kurucu, oyuncu listesindeki çıkarma düğmesiyle başka bir oyuncuyu masadan çıkarabilir. Çıkarılan kimlik o masaya tekrar giremez; rövanş bu engeli kaldırmaz. Aktif oyundaki çıkarma da elemeye ve kazanma kurallarına tabidir, idam sayılmaz. Bu arkadaş grubu uygulaması anonim tarayıcı kimliği kullanır; tarayıcı verisini silerek yeni kimlik oluşturmayı engelleyen hesap/IP yasağı yoktur.
+
+Bağlantı, oyun durumunun son başarılı alınmasına göre ölçülür. 20 saniye haber alınmayan oyuncunun yanında kalan bekleme süresi görünür. Ayarlanan süre dolunca sunucu sonraki durum/hamle sorgusunda elemeyi uygular; sonradan gelen bir kalp atışı oyuncuyu diriltmez. Bekleme odasında süresi dolanın koltuğu boşalır; oyun başlamadıysa boş yer oldukça dönebilir, yeniden hazır olması gerekir. Aktif oyunda dönen elenmiş kişi sadece izler. Süresi dolan konuşmacı atlanır; eksik gece hamlesi ve oylar kalan oyunculara göre çözülür. Herkes çevrimdışıysa hesaplama ilk geri dönüşte yapılır; ayrıca zamanlayıcı servisi gerekmez.
 
 ## Teknik yapı ve doğrulama
 
 React + TypeScript + Vite. Fontlar ve tüm görseller projeyle birlikte gelir; harici font servisi veya görsel servisi gerekmez. Karakter ve köy illüstrasyonları SVG'dir. Mobil tarayıcılar için manifest, güvenli alanlar, dokunma hedefleri, klavye erişimi ve azaltılmış hareket desteği bulunur.
 
-Oyun motoru PostgreSQL fonksiyonlarıdır. `vk_private` şeması HTTP API'ye açık değildir. Tablolarda RLS açık, istemcilere doğrudan tablo izni yoktur. Dokuz dar kapsamlı RPC, oturum kimliğini, masa üyeliğini, rolü, hedefi ve aşamayı kontrol eder. Roller sadece sahibi için döndürülür. İzleyici kurucu için `me` alanı `null` döner. Tur kilidi eşzamanlı hamleleri sıraya koyar; aşama ve konuşma sırası numaraları eski istekleri reddeder. Zamanı veritabanı belirler. İstemciler 1,8 saniyede bir durumu alır; host telefonuna veya ayrıca zamanlayıcı servisine bağımlılık yoktur.
+Oyun motoru PostgreSQL fonksiyonlarıdır. `vk_private` şeması HTTP API'ye açık değildir. Tablolarda RLS açık, istemcilere doğrudan tablo izni yoktur. Dar kapsamlı RPC’ler, oturum kimliğini, masa üyeliğini, rolü, hedefi ve aşamayı kontrol eder. Roller sadece sahibi için döndürülür. İzleyici kurucu için `me` alanı `null` döner. Tur kilidi eşzamanlı hamleleri sıraya koyar; aşama ve konuşma sırası numaraları eski istekleri reddeder. Zamanı veritabanı belirler. İstemciler 1,8 saniyede bir durumu alır; host telefonuna veya ayrıca zamanlayıcı servisine bağımlılık yoktur.
 
-`supabase/setup.sql`, mevcut kurulumu da yükseltir. Sütunları ekler ve fonksiyonları yeniler; mevcut masa ve oyuncuları silmez. Eksik yeni ayarlar eski masalarda varsayılan davranışı korur.
+`supabase/setup.sql`, mevcut kurulumu da yükseltir. Sütunları ekler ve fonksiyonları yeniler; mevcut masa ve oyuncuları silmez. Eksik yeni ayarlar eski masalarda yeni varsayılanlarla yorumlanır (bağlantı bekleme 60 saniye, şifre kapalı).
 
 ```sh
 npm test

@@ -80,6 +80,8 @@ export type Settings = {
   host_plays: boolean;
   turn_based: boolean;
   voice_enabled: boolean;
+  disconnect_seconds: number;
+  pin_enabled: boolean;
 };
 export const defaults: Settings = {
   day_seconds: 300,
@@ -92,6 +94,8 @@ export const defaults: Settings = {
   host_plays: true,
   turn_based: false,
   voice_enabled: false,
+  disconnect_seconds: 60,
+  pin_enabled: false,
 };
 export type Player = {
   id: string;
@@ -99,6 +103,8 @@ export type Player = {
   name: string;
   alive: boolean;
   online?: boolean;
+  ready: boolean;
+  disconnect_ends_at?: string | null;
   role: Role | null;
   eliminated_by?: string;
   self_heal_used?: boolean;
@@ -108,6 +114,7 @@ export type Game = {
   phase: string;
   seq: number;
   day: number;
+  round_number: number;
   started_at: string;
   ends_at: string;
   server_now: string;
