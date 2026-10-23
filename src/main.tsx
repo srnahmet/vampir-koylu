@@ -7,6 +7,13 @@ import "./style.css";
 const root = createRoot(document.getElementById("root")!);
 if (
   import.meta.env.DEV &&
+  new URLSearchParams(location.search).has("ses-test")
+) {
+  void import("./voice/VoicePreview").then(({ default: VoicePreview }) =>
+    root.render(<VoicePreview />),
+  );
+} else if (
+  import.meta.env.DEV &&
   new URLSearchParams(location.search).has("sahneler")
 ) {
   void import("./ScenePreview").then(({ default: ScenePreview }) =>

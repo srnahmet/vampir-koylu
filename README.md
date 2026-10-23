@@ -26,6 +26,16 @@ Masa kurarken **Ben de oynayacağım** veya **Yalnızca masayı yönet** seçili
 
 Gece, oylama, ölüm, idam, doktor kurtarışı, rol dağıtımı ve üç kazanma durumu için ayrı SVG piksel sahneleri ve CSS animasyonları vardır. Ölen veya konuşan kişinin özel rolü görselden açığa çıkmaz; nötr köy sakini çizimleri kullanılır. Azaltılmış hareket tercihi animasyonları durdurur.
 
+## İsteğe bağlı sesli sohbet
+
+**Masada sesli sohbet** varsayılan olarak kapalıdır. Kurucu yalnızca **Sıra bazlı konuşma** açıkken etkinleştirebilir; sıralı konuşma kapatılırsa ses ayarı da kapanır. Her oyuncu ayrıca **Sesli sohbete katıl** seçer. Katılmak mikrofon izni istemez veya mikrofonu açmaz. Mikrofon yalnızca oyuncunun kendi sırasında ve toplu konuşmada, oyuncunun düğmeye basmasıyla açılır. Sıra değişince, süre dolunca, başka aşamaya geçilince, oyuncu elenince veya sekme arka plana alınınca ses izi durdurulur. Sonraki sırada kendiliğinden açılmaz. İzleyici kurucu ve elenenler yalnızca dinleyebilir.
+
+Gerçek ses etkinliği oyuncunun yanında **Konuşuyor** göstergesiyle görünür; sessiz ama açık mikrofon ayrı gösterilir. Diğerlerinin sesini kapatma ve sesten ayrılma düğmeleri vardır. Ses kaydı tutulmaz. Mikrofon HTTPS (veya localhost) ve tarayıcı izni gerektirir.
+
+Ses WebRTC ile tarayıcılar arasında aktarılır. Supabase yalnızca aynı masadaki kimliği doğrulanmış üyeler arasında bağlantı mesajlarını taşır; roller veya kullanıcı kimlikleri bu mesajlara eklenmez. Varsayılan kapalıyken ses için bağlantı, mikrofon erişimi veya ek sorgulama yapılmaz. Katılanlar için saniyede bir kısa sinyal/oturum sorgusu çalışır. Sinyaller iki dakika, sessiz kalan bağlantı kayıtları yirmi saniye sonra sonraki sorguda temizlenir.
+
+Ses açıkken internet, pil, işlemci ve Supabase sorgu kullanımı artar. Her katılımcı diğer katılımcılara ayrı bağlantı kurduğundan kalabalık masalarda maliyet ve gecikme büyür; kulaklık önerilir. Bu uyarı masa ayarlarında ve ses panelinde gösterilir. Kurulum STUN kullanır; **TURN aktarım sunucusu içermez**, bu nedenle bazı mobil, okul veya iş ağlarında ses bağlantısı kurulamayabilir. Geniş ağ uyumluluğu için ayrıca kimliği doğrulanmış TURN hizmeti gerekir. Bu sürümde TURN erişim bilgileri veya ücretli servis eklenmemiştir.
+
 ## Çalıştırma
 
 Node.js 22 veya 24 ile:
@@ -76,7 +86,7 @@ Süreler masa kurulurken ayarlanır: gündüz 30–1800 sn (varsayılan 300), he
 
 React + TypeScript + Vite. Fontlar ve tüm görseller projeyle birlikte gelir; harici font servisi veya görsel servisi gerekmez. Karakter ve köy illüstrasyonları SVG'dir. Mobil tarayıcılar için manifest, güvenli alanlar, dokunma hedefleri, klavye erişimi ve azaltılmış hareket desteği bulunur.
 
-Oyun motoru PostgreSQL fonksiyonlarıdır. `vk_private` şeması HTTP API'ye açık değildir. Tablolarda RLS açık, istemcilere doğrudan tablo izni yoktur. Yedi dar kapsamlı RPC, oturum kimliğini, masa üyeliğini, rolü, hedefi ve aşamayı kontrol eder. Roller sadece sahibi için döndürülür. İzleyici kurucu için `me` alanı `null` döner. Tur kilidi eşzamanlı hamleleri sıraya koyar; aşama ve konuşma sırası numaraları eski istekleri reddeder. Zamanı veritabanı belirler. İstemciler 1,8 saniyede bir durumu alır; host telefonuna veya ayrıca zamanlayıcı servisine bağımlılık yoktur.
+Oyun motoru PostgreSQL fonksiyonlarıdır. `vk_private` şeması HTTP API'ye açık değildir. Tablolarda RLS açık, istemcilere doğrudan tablo izni yoktur. Dokuz dar kapsamlı RPC, oturum kimliğini, masa üyeliğini, rolü, hedefi ve aşamayı kontrol eder. Roller sadece sahibi için döndürülür. İzleyici kurucu için `me` alanı `null` döner. Tur kilidi eşzamanlı hamleleri sıraya koyar; aşama ve konuşma sırası numaraları eski istekleri reddeder. Zamanı veritabanı belirler. İstemciler 1,8 saniyede bir durumu alır; host telefonuna veya ayrıca zamanlayıcı servisine bağımlılık yoktur.
 
 `supabase/setup.sql`, mevcut kurulumu da yükseltir. Sütunları ekler ve fonksiyonları yeniler; mevcut masa ve oyuncuları silmez. Eksik yeni ayarlar eski masalarda varsayılan davranışı korur.
 

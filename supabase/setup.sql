@@ -61,6 +61,33 @@ alter table vk_private.early_votes enable row level security;
 create index if not exists vk_players_room on vk_private.players(room_id);
 create index if not exists vk_rooms_host on vk_private.rooms(host_id,created_at);
 
+-- WebRTC signaling only; audio never passes through or is stored in Postgres.
+create table if not exists vk_private.voice_peers (
+ room_id uuid not null references vk_private.rooms(id) on delete cascade,
+ user_id uuid not null,
+ session_id uuid not null,
+ player_id uuid references vk_private.players(id) on delete cascade,
+ mic_open boolean not null default false,
+ last_seen timestamptz not null default now(),
+ primary key(room_id,user_id), unique(room_id,session_id)
+);
+create table if not exists vk_private.voice_signals (
+ id bigint generated always as identity primary key,
+ room_id uuid not null references vk_private.rooms(id) on delete cascade,
+ sender uuid not null,
+ recipient uuid not null,
+ payload jsonb not null,
+ client_id uuid not null default gen_random_uuid(),
+ created_at timestamptz not null default now()
+);
+alter table vk_private.voice_peers enable row level security;
+alter table vk_private.voice_signals enable row level security;
+create index if not exists vk_voice_recipient on vk_private.voice_signals(room_id,recipient,id);
+create index if not exists vk_voice_expiry on vk_private.voice_signals(created_at);
+alter table vk_private.voice_signals add column if not exists client_id uuid not null default gen_random_uuid();
+create unique index if not exists vk_voice_message_once on vk_private.voice_signals(room_id,sender,client_id);
+create index if not exists vk_voice_seen on vk_private.voice_peers(last_seen);
+
 create or replace function vk_private.require_user() returns uuid
 language plpgsql security definer set search_path = '' as $$
 begin
@@ -94,7 +121,8 @@ begin
  if t not in ('classic','lavender','forest','peach') then t := 'classic'; end if;
  return jsonb_build_object('day_seconds',d,'night_seconds',n,'vote_seconds',v,'runoff_seconds',e,
   'doctor',vk_private.role_mode(raw,'doctor'),'jester',vk_private.role_mode(raw,'jester'),'theme',t,
-  'host_plays',coalesce((raw->>'host_plays')::boolean,true),'turn_based',coalesce((raw->>'turn_based')::boolean,false));
+  'host_plays',coalesce((raw->>'host_plays')::boolean,true),'turn_based',coalesce((raw->>'turn_based')::boolean,false),
+  'voice_enabled',coalesce((raw->>'voice_enabled')::boolean,false) and coalesce((raw->>'turn_based')::boolean,false));
 end $$;
 
 -- Room lock serializes joining, dealing, actions and timer transitions.
@@ -385,8 +413,87 @@ begin
   where id=r.id;
 end $$;
 
+create or replace function vk_private.voice_can_speak(r vk_private.rooms, pid uuid) returns boolean
+language plpgsql stable set search_path = '' as $$
+declare count_speakers int:=cardinality(r.speech_order);
+begin
+ if pid is null or not coalesce((r.settings->>'voice_enabled')::boolean,false)
+    or not coalesce((r.settings->>'turn_based')::boolean,false)
+    or not exists(select 1 from vk_private.players where id=pid and room_id=r.id and alive)
+    or r.ends_at is null or r.ends_at<=now() then return false; end if;
+ if r.phase='runoff' then return true; end if;
+ if r.phase not in ('intro','day') or count_speakers=0 then return false; end if;
+ if r.speech_turn>=count_speakers*2 then return true; end if;
+ return r.speech_order[r.speech_turn%count_speakers+1]=pid and r.speech_ends_at>now();
+end $$;
+
+create or replace function public.vk_voice_sync(p_code text,p_session uuid,p_after bigint default 0,
+ p_messages jsonb default '[]',p_join boolean default false,p_mic boolean default false) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare uid uuid:=vk_private.require_user(); r vk_private.rooms; me vk_private.players;
+ joined vk_private.voice_peers; msg jsonb; dest uuid; peers jsonb; signals jsonb; permitted boolean;
+begin
+ select * into r from vk_private.rooms where code=upper(btrim(p_code));
+ if not found then raise exception 'Masa bulunamadı.'; end if;
+ select * into me from vk_private.players where room_id=r.id and user_id=uid;
+ if not found and r.host_id<>uid then raise exception 'Önce bu masaya katılmalısın.'; end if;
+ if not coalesce((r.settings->>'voice_enabled')::boolean,false) or not coalesce((r.settings->>'turn_based')::boolean,false)
+    or r.phase='finished' then
+  delete from vk_private.voice_peers where room_id=r.id and user_id=uid;
+  return jsonb_build_object('enabled',false,'peers','[]'::jsonb,'signals','[]'::jsonb,'can_speak',false,'server_now',now());
+ end if;
+ if p_session is null then raise exception 'Sesli oturum kimliği gerekli.'; end if;
+ if jsonb_typeof(p_messages) is distinct from 'array' or jsonb_array_length(p_messages)>40
+    or octet_length(p_messages::text)>262144 then raise exception 'Ses bağlantı isteği çok büyük.'; end if;
+ -- Expired negotiation messages and abandoned sessions are ephemeral.
+ delete from vk_private.voice_signals where created_at<now()-interval '2 minutes';
+ delete from vk_private.voice_peers where last_seen<now()-interval '20 seconds';
+ permitted:=vk_private.voice_can_speak(r,me.id);
+ if p_join then
+  insert into vk_private.voice_peers(room_id,user_id,session_id,player_id,mic_open)
+   values(r.id,uid,p_session,me.id,false)
+   on conflict(room_id,user_id) do update set session_id=excluded.session_id,player_id=excluded.player_id,
+    mic_open=false,last_seen=now();
+ end if;
+ update vk_private.voice_peers set last_seen=now(),mic_open=coalesce(p_mic,false) and permitted
+  where room_id=r.id and user_id=uid and session_id=p_session returning * into joined;
+ if not found then raise exception 'Sesli oturum kapandı veya başka sekmede açıldı.'; end if;
+ for msg in select value from jsonb_array_elements(p_messages) loop
+  if jsonb_typeof(msg) is distinct from 'object' or jsonb_typeof(msg->'payload') is distinct from 'object'
+     or coalesce(msg->'payload'->>'type','') not in ('offer','answer','ice')
+     or octet_length((msg->'payload')::text)>32768 then raise exception 'Geçersiz ses bağlantı mesajı.'; end if;
+  dest:=(msg->>'to')::uuid;
+  if dest<>p_session and exists(select 1 from vk_private.voice_peers where room_id=r.id and session_id=dest) then
+   if msg->>'id' is null then raise exception 'Ses mesajı kimliği gerekli.'; end if;
+   insert into vk_private.voice_signals(room_id,sender,recipient,payload,client_id)
+    values(r.id,p_session,dest,msg->'payload',(msg->>'id')::uuid) on conflict(room_id,sender,client_id) do nothing;
+  end if;
+ end loop;
+ select coalesce(jsonb_agg(jsonb_build_object('session_id',v.session_id,'player_id',v.player_id,
+  'name',coalesce(p.name,'Masa kurucusu'),'number',p.number,
+  'mic_open',v.mic_open and vk_private.voice_can_speak(r,v.player_id),
+  'can_speak',vk_private.voice_can_speak(r,v.player_id)) order by p.number nulls last),'[]'::jsonb)
+  into peers from vk_private.voice_peers v left join vk_private.players p on p.id=v.player_id where v.room_id=r.id;
+ select coalesce(jsonb_agg(jsonb_build_object('id',s.id,'from',s.sender,'payload',s.payload) order by s.id),'[]'::jsonb)
+  into signals from (select s.* from vk_private.voice_signals s where s.room_id=r.id and s.recipient=p_session
+   and s.id>greatest(coalesce(p_after,0),0) and exists(select 1 from vk_private.voice_peers v where v.room_id=r.id and v.session_id=s.sender)
+   order by s.id limit 100) s;
+ return jsonb_build_object('enabled',true,'peers',peers,'signals',signals,'can_speak',permitted,'server_now',now());
+end $$;
+
+create or replace function public.vk_voice_leave(p_code text,p_session uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+declare uid uuid:=vk_private.require_user(); rid uuid;
+begin
+ select id into rid from vk_private.rooms where code=upper(btrim(p_code));
+ delete from vk_private.voice_peers where room_id=rid and user_id=uid and session_id=p_session;
+ if found then delete from vk_private.voice_signals where room_id=rid and (sender=p_session or recipient=p_session); end if;
+end $$;
+
 revoke all on all tables in schema vk_private from public,anon,authenticated;
 revoke all on all functions in schema vk_private from public,anon,authenticated;
 revoke all on function public.vk_quota(),public.vk_create(text,jsonb),public.vk_join(text,text),public.vk_start(text),public.vk_act(text,int,text,uuid),public.vk_state(text),public.vk_speak(text,int,int) from public,anon;
 grant execute on function public.vk_quota(),public.vk_create(text,jsonb),public.vk_join(text,text),public.vk_start(text),public.vk_act(text,int,text,uuid),public.vk_state(text),public.vk_speak(text,int,int) to authenticated;
+revoke all on function public.vk_voice_sync(text,uuid,bigint,jsonb,boolean,boolean),public.vk_voice_leave(text,uuid) from public,anon;
+grant execute on function public.vk_voice_sync(text,uuid,bigint,jsonb,boolean,boolean),public.vk_voice_leave(text,uuid) to authenticated;
 commit;

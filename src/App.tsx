@@ -16,6 +16,7 @@ import {
   Eye,
   EyeOff,
   Heart,
+  Headphones,
   HelpCircle,
   Link,
   LoaderCircle,
@@ -59,6 +60,8 @@ import { EarlyAdvance } from "./EarlyAdvance";
 import { RoomAllowance } from "./RoomAllowance";
 import { RoleOptions } from "./RoleOptions";
 import { VampireAttack } from "./VampireAttack";
+import { useVoice } from "./voice/useVoice";
+import { VoicePanel, VoiceBadge } from "./voice/VoicePanel";
 
 type Panel = "create" | "join" | "rules" | "theme" | "role" | null;
 function Modal({
@@ -276,6 +279,7 @@ export default function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [qr, setQr] = useState("");
   const [offset, setOffset] = useState(0);
+  const voice = useVoice(game, offset);
   const audio = useRef<AudioContext | null>(null);
   const lastPhase = useRef("");
   const activeNight = game ? game.phase === "night" : nightPreview;
@@ -843,6 +847,7 @@ export default function App() {
                 />
               )}
             </div>
+            <VoicePanel game={game} voice={voice} />
             {["intro", "day", "runoff"].includes(game.phase) && (
               <EarlyAdvance
                 game={game}
@@ -912,6 +917,7 @@ export default function App() {
                           {p.name}
                           {p.id === game.me?.id && <small> (sen)</small>}
                         </span>
+                        <VoiceBadge playerId={p.id} voice={voice} />
                         <span className={`presence ${p.online ? "" : "away"}`}>
                           {p.online ? "Hazır" : "Bağlantı bekleniyor"}
                         </span>
@@ -1291,6 +1297,7 @@ export default function App() {
                             {p.name}
                             {p.id === game.me?.id && <small> (sen)</small>}
                           </span>
+                          <VoiceBadge playerId={p.id} voice={voice} />
                           {p.alive ? (
                             <span
                               className={`presence-dot ${p.online ? "" : "away"}`}
@@ -1467,7 +1474,11 @@ export default function App() {
                   aria-label="Sıra bazlı konuşma"
                   checked={cfg.turn_based}
                   onChange={(e) =>
-                    setCfg({ ...cfg, turn_based: e.target.checked })
+                    setCfg({
+                      ...cfg,
+                      turn_based: e.target.checked,
+                      voice_enabled: e.target.checked && cfg.voice_enabled,
+                    })
                   }
                 />
                 <span className="switch" />
@@ -1478,6 +1489,39 @@ export default function App() {
                   Konuşmacı erken bitirebilir; süre dolunca sıra otomatik geçer.
                   Kalan süre serbest sohbettir. Kalabalık masalarda gündüzü
                   uzatabilirsin.
+                </p>
+              )}
+              <label
+                className={`role-toggle voice-toggle ${cfg.turn_based ? "" : "disabled"}`}
+              >
+                <span className="feature-symbol">
+                  <Headphones size={22} />
+                </span>
+                <span>
+                  <strong>Masada sesli sohbet</strong>
+                  <small>
+                    {cfg.turn_based
+                      ? "Sıra gelince veya toplu konuşmada mikrofon açılabilir."
+                      : "Önce sıra bazlı konuşmayı aç."}
+                  </small>
+                </span>
+                <input
+                  type="checkbox"
+                  aria-label="Masada sesli sohbet"
+                  checked={cfg.voice_enabled}
+                  disabled={!cfg.turn_based}
+                  onChange={(e) =>
+                    setCfg({ ...cfg, voice_enabled: e.target.checked })
+                  }
+                />
+                <span className="switch" />
+              </label>
+              {cfg.voice_enabled && (
+                <p className="voice-setup-note">
+                  Sesli sohbet isteğe bağlıdır; herkes kendi isteğiyle katılır
+                  ve mikrofonu kapalı başlar. İnternet, pil ve işlemci kullanımı
+                  artar; kalabalık masalarda gecikme olabilir. Kulaklık
+                  önerilir. Bazı kısıtlı ağlarda ses bağlantısı kurulamayabilir.
                 </p>
               )}
             </div>

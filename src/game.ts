@@ -75,6 +75,7 @@ export type Settings = {
   theme: Theme;
   host_plays: boolean;
   turn_based: boolean;
+  voice_enabled: boolean;
 };
 export const defaults: Settings = {
   day_seconds: 300,
@@ -86,6 +87,7 @@ export const defaults: Settings = {
   theme: "classic",
   host_plays: true,
   turn_based: false,
+  voice_enabled: false,
 };
 export type Player = {
   id: string;

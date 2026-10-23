@@ -63,7 +63,7 @@ export function SpeechPanel({
             </div>
             <div>
               <span className="eyebrow">
-                {yours ? "MİKROFON SENDE" : "ŞİMDİ ONU DİNLİYORUZ"}
+                {yours ? "SÖZ SIRASI SENDE" : "ŞİMDİ ONU DİNLİYORUZ"}
               </span>
               <h3>
                 #{speaker?.number} {speaker?.name}
