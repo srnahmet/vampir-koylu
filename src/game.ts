@@ -191,7 +191,7 @@ export const roles: Record<
     tag: "BİRAZ ŞÜPHELİ OL",
     description:
       "Amacın köyü senin vampir olduğuna inandırmak. Tartışmayı biraz karıştır!",
-    win: "Çoğunluk oyuyla idam edilirsen yalnızca sen kazanırsın ve oyun biter.",
+    win: "En çok oyu tek başına alıp idam edilirsen yalnızca sen kazanırsın ve oyun biter.",
     lose: "Vampir seni öldürürse veya başka bir taraf kazanırsa kaybedersin.",
     color: "#e49a97",
   },

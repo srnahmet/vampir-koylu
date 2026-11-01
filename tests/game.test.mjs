@@ -259,6 +259,119 @@ test("Database game rules and access boundaries", async (t) => {
     },
   );
   await t.test(
+    "unique leader is executed without a strict majority, including tied runners-up",
+    async () => {
+      for (const targets of [
+        [1, 0, 0, 2, 3], // 2–1–1–1: a one-vote lead is sufficient.
+        [1, 0, 0, 0, 2, 3], // 3–1–1–1: exactly half can execute.
+        [1, 0, 0, 0, 1, 2, 2], // 3–2–2: only ties at first place matter.
+      ]) {
+        const g = await make(targets.length);
+        await start(g);
+        const p = await allPlayers(g);
+        await query("update vk_private.players set role=case when id=$1 then 'vampire' else 'villager' end where room_id=$2", [p.at(-1).id, p[0].room_id]);
+        await force(g, "voting");
+        for (let i = 0; i < targets.length; i++) await act(g, i, "vote", p[targets[i]].id);
+        assert.equal((await state(g)).phase, "voting", "minimum voting time is still required");
+        await expire(g);
+        const s = await state(g);
+        assert.equal(s.phase, "execution");
+        assert.equal(s.announcement.kind, "execution");
+        assert.equal(s.announcement.number, p[0].number);
+        assert.equal(s.players.filter(x => !x.alive).length, 1);
+        assert.equal(s.players[0].eliminated_by, "village");
+      }
+    },
+  );
+  await t.test(
+    "plurality still waits for every living voter when minimum time has elapsed",
+    async () => {
+      const g = await make(5);
+      await start(g);
+      const p = await allPlayers(g);
+      await query("update vk_private.players set role=case when id=$1 then 'vampire' else 'villager' end where room_id=$2", [p[4].id, p[0].room_id]);
+      await force(g, "voting");
+      for (const [i, target] of [[0, 1], [1, 0], [2, 0], [3, 2]]) await act(g, i, "vote", p[target].id);
+      await expire(g);
+      assert.equal((await state(g)).phase, "voting");
+      await act(g, 4, "vote", p[3].id);
+      assert.equal((await state(g)).announcement.number, p[0].number);
+      assert.equal((await state(g)).phase, "execution");
+    },
+  );
+  await t.test(
+    "only tied highest counts repeat voting: 2–2–1, three-way and all-way ties",
+    async () => {
+      for (const targets of [[1, 0, 0, 1, 2], [1, 2, 0, 0, 1, 2], [1, 2, 3, 4, 0]]) {
+        const g = await make(targets.length, { runoff_seconds: 45 });
+        await start(g);
+        const p = await allPlayers(g);
+        await force(g, "voting");
+        for (let i = 0; i < targets.length; i++) await act(g, i, "vote", p[targets[i]].id);
+        await expire(g);
+        let s = await state(g);
+        assert.equal(s.phase, "runoff");
+        assert.equal(s.announcement.kind, "tie");
+        assert.match(s.announcement.text, /En yüksek oyda eşitlik/);
+        assert.ok(s.players.every(x => x.alive));
+        assert.equal(Date.parse(s.ends_at) - Date.parse(s.started_at), 45000);
+        await expire(g);
+        s = await state(g);
+        assert.equal(s.phase, "voting");
+        assert.equal(s.my_vote, null);
+        assert.equal(s.votes_cast, 0);
+      }
+    },
+  );
+  await t.test(
+    "executing vampire or jester by a one-vote plurality still awards the correct winner",
+    async () => {
+      for (const [role, winner] of [["vampire", "village"], ["jester", "jester"]]) {
+        const g = await make(5, { jester: true });
+        await start(g);
+        const p = await allPlayers(g);
+        await query("update vk_private.players set role=case when id=$1 then $3 when id=$2 then 'vampire' else 'villager' end where room_id=$4", [p[0].id, p[4].id, role, p[0].room_id]);
+        // Vampire fixtures must contain exactly one vampire.
+        if (role === "vampire") await query("update vk_private.players set role='villager' where id=$1", [p[4].id]);
+        await force(g, "voting");
+        const targets = [1, 0, 0, 2, 3];
+        for (let i = 0; i < targets.length; i++) await act(g, i, "vote", p[targets[i]].id);
+        await expire(g);
+        const s = await state(g);
+        assert.equal(s.phase, "finished");
+        assert.equal(s.winner, winner);
+        assert.equal(s.announcement.number, p[0].number);
+        assert.equal(s.players[0].eliminated_by, "village");
+      }
+    },
+  );
+  await t.test(
+    "vote-only SQL upgrade preserves active rooms, ballots and private function permissions",
+    async () => {
+      const g = await make(5);
+      await start(g);
+      const p = await allPlayers(g);
+      await query("update vk_private.players set role=case when id=$1 then 'vampire' else 'villager' end where room_id=$2", [p[4].id, p[0].room_id]);
+      await force(g, "voting");
+      const targets = [1, 0, 0, 2, 3];
+      for (let i = 0; i < targets.length; i++) await act(g, i, "vote", p[targets[i]].id);
+      const before = await query("select * from vk_private.rooms where code=$1", [g.code]);
+      const ballots = await query("select * from vk_private.votes where room_id=$1 order by voter", [p[0].room_id]);
+      const migration = await readFile(new URL("../supabase/vote-plurality.sql", import.meta.url), "utf8");
+      const setup = await readFile(new URL("../supabase/setup.sql", import.meta.url), "utf8");
+      const func = setup.slice(setup.indexOf("create or replace function vk_private.advance("), setup.indexOf("create or replace function vk_private.room_quota(")).trim();
+      assert.ok(migration.includes(func), "standalone update matches the tested game engine");
+      await db.exec(migration);
+      assert.deepEqual(await query("select * from vk_private.rooms where code=$1", [g.code]), before);
+      assert.deepEqual(await query("select * from vk_private.votes where room_id=$1 order by voter", [p[0].room_id]), ballots);
+      await db.exec("set role authenticated");
+      await assert.rejects(() => query("select vk_private.advance($1)", [p[0].room_id]), /permission denied/);
+      await db.exec("reset role");
+      await expire(g);
+      assert.equal((await state(g)).announcement.number, p[0].number);
+    },
+  );
+  await t.test(
     "vampire execution wins for village and reveals roles only at finish",
     async () => {
       const g = await make(5);

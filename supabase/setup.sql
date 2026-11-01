@@ -250,12 +250,16 @@ begin
  when 'voting' then
   select count(*) into votes_count from vk_private.votes where room_id=rid and seq=r.seq;
   if votes_count<alive_count then return; end if;
-  select target into target_id from vk_private.votes where room_id=rid and seq=r.seq
-    group by target having count(*)>=needed limit 1;
+  -- Execution uses a unique plurality; the strict majority above is only for early transitions.
+  with totals as (
+   select target,count(*) n from vk_private.votes where room_id=rid and seq=r.seq group by target
+  ), leaders as (
+   select target,count(*) over () tied from totals where n=(select max(n) from totals)
+  ) select target into target_id from leaders where tied=1;
   if target_id is null then
    r.phase:='runoff'; dur:=(r.settings->>'runoff_seconds')::int;
-   r.announcement:=jsonb_build_object('kind','tie','text','Çoğunluk sağlanamadı. Biraz daha konuşalım; ardından oylar yeniden açılacak.');
-   r.events:=r.events||jsonb_build_array(jsonb_build_object('day',r.day,'text','Oylamada çoğunluk sağlanamadı.'));
+   r.announcement:=jsonb_build_object('kind','tie','text','En yüksek oyda eşitlik var. Biraz daha konuşalım; ardından oylar yeniden açılacak.');
+   r.events:=r.events||jsonb_build_array(jsonb_build_object('day',r.day,'text','Oylamada en yüksek oy eşit çıktı.'));
   else
    update vk_private.players set alive=false,eliminated_by='village' where id=target_id returning * into p;
    r.announcement:=jsonb_build_object('kind','execution','number',p.number,'name',p.name,'text',format('%s · %s köyün kararıyla idam edildi.',p.number,p.name));

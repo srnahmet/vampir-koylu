@@ -72,8 +72,8 @@ export const villageStories: readonly VillageStory[] = [
   },
   {
     id: "yarim-koy",
-    title: "Yarım köy yetmez",
-    text: "Karar için yaşayanların yarısından fazlası gerekir. Tam yarısı aynı fikirdeyse köy henüz anlaşmamıştır.",
+    title: "İki farklı karar",
+    text: "Erken geçişte yarıdan fazla istek gerekir. İdamda tek başına en çok oyu alan elenir; birincilik eşitse yeniden oylanır.",
     cast: ["villager", "doctor"],
     kind: "tip",
   },

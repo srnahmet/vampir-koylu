@@ -202,9 +202,9 @@ function Rules() {
           asgari süre dolana kadar beklenir.
         </li>
         <li>
-          <strong>Çoğunluk şart.</strong> Yaşayanların yarısından fazlasının
-          seçtiği oyuncu idam edilir. Sonuç çıkmazsa ek tartışma ve yeni oylama
-          yapılır.
+          <strong>En çok oy alan elenir.</strong> Tek başına en çok oyu alan
+          oyuncu idam edilir. En yüksek oy birden fazla kişide eşitse ek
+          tartışma ve yeni oylama yapılır.
         </li>
       </ol>
       <div className="rule-box">
@@ -491,7 +491,6 @@ export default function App() {
     setPanel(p);
   }
   const alive = game?.players.filter((p) => p.alive) || [];
-  const needed = Math.floor(alive.length / 2) + 1;
   const canChoose =
     !!game &&
     game.me?.alive &&
@@ -1163,16 +1162,16 @@ export default function App() {
                           </h2>
                           <p className="stage-description">
                             {game.is_observer
-                              ? `İdam için en az ${needed} oy gerekli. Bu ekranda yalnızca oylamanın ilerleyişi gösterilir.`
+                              ? "Tek başına en çok oyu alan idam edilir; en yüksek oy eşitse oylama tekrarlanır. Bu ekranda yalnızca oylamanın ilerleyişi gösterilir."
                               : game.my_vote
                                 ? "Oyun kaydedildi ve değiştirilemez. Artık güncel oyları görebilirsin."
-                                : `İdam için en az ${needed} oy gerekli. Oy verdikten sonra sayıları görebilirsin.`}
+                                : "Tek başına en çok oyu alan idam edilir; en yüksek oy eşitse oylama tekrarlanır. Oy verdikten sonra sayıları görebilirsin."}
                           </p>
                           <div className="vote-progress">
                             <span>
                               {game.votes_cast}/{alive.length} kişi oy verdi
                             </span>
-                            <span>Gereken: {needed}</span>
+                            <span>Eşitlikte tekrar</span>
                           </div>
                           <div className="progress-track">
                             <span

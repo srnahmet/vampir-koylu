@@ -80,8 +80,8 @@ Settings → Pages → Source: **GitHub Actions**. `main` dalına gönderilen he
 - Roller 7 saniye gösterilir, ardından 5 saniye geri sayım yapılır.
 - İlk konuşmadan sonra ilk gece başlar. İlk konuşmada idam yoktur; yaşayanların salt çoğunluğu ile geceye erken geçilebilir.
 - Sonraki gündüzlerde süre bitince oylama açılır. Yaşayanların yarısından fazlasının isteğiyle erken açılabilir.
-- Çoğunluk = `floor(yaşayan / 2) + 1`. Ölüler oy kullanamaz. Kendine oy yoktur. Kesinleşmiş oy değişmez. Sayılar yalnızca kendi oyunu verenlere görünür.
-- Oylama en az belirlenen süre kadar sürer; ayrıca yaşayan herkesin oy vermesi beklenir. Çoğunluk çıkmazsa ek tartışma başlar, ardından boş oylarla yeni tur açılır.
+- Erken geceye/oylamaya geçiş için gereken çoğunluk = `floor(yaşayan / 2) + 1`. İdamda ise tek başına en çok oyu alan seçilir; yarıdan fazla oy şartı yoktur. Ölüler oy kullanamaz. Kendine oy yoktur. Kesinleşmiş oy değişmez. Sayılar yalnızca kendi oyunu verenlere görünür.
+- Oylama en az belirlenen süre kadar sürer; ayrıca yaşayan herkesin oy vermesi beklenir. En yüksek oy birden fazla kişide eşitse ek tartışma başlar, ardından boş oylarla yeni tur açılır. Örneğin 2–1–1–1 sonucunda lider idam edilir; 2–2–1 sonucunda tekrar oylanır.
 - Vampir hedefini seçer. Varsa yaşayan doktor, hedefi bilmeden sonrasında koruma seçer. Ölüm ancak iki aşama tamamlanınca uygulanır. Doktor hedef olmuş olsa bile o gece hamle yapar.
 - Her gece hamlesi en az belirlenen süre kadar sürer ve seçim yapılmadan tamamlanmaz. Doktor kendini tüm oyunda bir kez, başkalarını tekrar tekrar koruyabilir.
 - Vampir idam edilirse köylüler ve doktor, elenmiş olsalar da kazanır.
@@ -91,6 +91,8 @@ Settings → Pages → Source: **GitHub Actions**. `main` dalına gönderilen he
 - Bağlantısı kopan kişi varsayılan 60 saniye içinde aynı tarayıcıyla dönerse rolüyle devam eder. Süre dolarsa o turdan elenir; geç dönerse yalnızca izler. Vampir bu şekilde elenirse köy kazanır; Soytarı yalnızca idamla kazanır. Çoğunluk yaşayanlara göre hesaplanır; ayrılanın oyları ve ona verilen oylar kaldırılır, hedefi düşenler yeniden seçer. Geceye 3 kişiyle girme kuralına ek olarak, bağlantı/çıkarma nedeniyle vampirle toplam 2 kişi kalırsa oyun vampirin zaferiyle biter.
 
 Süreler masa kurulurken ayarlanır: gündüz 30–1800 sn (varsayılan 300), her gece hamlesi 15–120 sn (15), oylama 20–120 sn (20), ek tartışma 15–300 sn (60), bağlantı bekleme 30–600 sn (60). Oyun içi sonuç duyuruları 7 sn sürer. Çok vampirli mod, "Yakında" bilgisiyle kapalıdır.
+
+Mevcut kurulumda yalnızca yeni idam oylaması kuralına geçmek için Supabase SQL Editor'de [vote-plurality.sql](supabase/vote-plurality.sql) çalıştırılabilir. Bu dosya yalnızca aşama fonksiyonunu yeniler; masa/oyuncu kayıtlarını ve izinleri korur. Ön yüz açıklamaları da yeni kuralla birlikte yayımlanmalıdır.
 
 ## Hazırlık, rövanş ve masa yönetimi
 
