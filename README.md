@@ -81,7 +81,7 @@ Settings → Pages → Source: **GitHub Actions**. `main` dalına gönderilen he
 - İlk konuşmadan sonra ilk gece başlar. İlk konuşmada idam yoktur; yaşayanların salt çoğunluğu ile geceye erken geçilebilir.
 - Sonraki gündüzlerde süre bitince oylama açılır. Yaşayanların yarısından fazlasının isteğiyle erken açılabilir.
 - Erken geceye/oylamaya geçiş için gereken çoğunluk = `floor(yaşayan / 2) + 1`. İdamda ise tek başına en çok oyu alan seçilir; yarıdan fazla oy şartı yoktur. Ölüler oy kullanamaz. Kendine oy yoktur. Kesinleşmiş oy değişmez. Sayılar yalnızca kendi oyunu verenlere görünür.
-- Oylama en az belirlenen süre kadar sürer; ayrıca yaşayan herkesin oy vermesi beklenir. En yüksek oy birden fazla kişide eşitse ek tartışma başlar, ardından boş oylarla yeni tur açılır. Örneğin 2–1–1–1 sonucunda lider idam edilir; 2–2–1 sonucunda tekrar oylanır.
+- Oylama en az belirlenen süre kadar sürer; ayrıca yaşayan herkesin oy vermesi beklenir. En yüksek oy birden fazla kişide eşitse ek tartışma başlar, ardından **yalnızca birincilikte eşit kalan adaylarla** boş oylarla yeni tur açılır. Her yaşayan oyuncu yeniden oy verir; yeniden eşitlikte aday listesi yine daralır. Örneğin 2–1–1–1 sonucunda lider idam edilir; 2–2–1 sonucunda yalnızca iki lider tekrar oylanır. Ayrılmalar sonrası tek aday kalırsa kendine oy veremediği için yalnızca o aday oy kullanmaz; diğer herkes ve asgari süre yine beklenir. Tüm adaylar ayrılırsa yaşayanlar yeniden aday olabilir.
 - Vampir hedefini seçer. Varsa yaşayan doktor, hedefi bilmeden sonrasında koruma seçer. Ölüm ancak iki aşama tamamlanınca uygulanır. Doktor hedef olmuş olsa bile o gece hamle yapar.
 - Her gece hamlesi en az belirlenen süre kadar sürer ve seçim yapılmadan tamamlanmaz. Doktor kendini tüm oyunda bir kez, başkalarını tekrar tekrar koruyabilir.
 - Vampir idam edilirse köylüler ve doktor, elenmiş olsalar da kazanır.
@@ -92,15 +92,25 @@ Settings → Pages → Source: **GitHub Actions**. `main` dalına gönderilen he
 
 Süreler masa kurulurken ayarlanır: gündüz 30–1800 sn (varsayılan 300), her gece hamlesi 15–120 sn (15), oylama 20–120 sn (20), ek tartışma 15–300 sn (60), bağlantı bekleme 30–600 sn (60). Oyun içi sonuç duyuruları 7 sn sürer. Çok vampirli mod, "Yakında" bilgisiyle kapalıdır.
 
-Mevcut kurulumda yalnızca yeni idam oylaması kuralına geçmek için Supabase SQL Editor'de [vote-plurality.sql](supabase/vote-plurality.sql) çalıştırılabilir. Bu dosya yalnızca aşama fonksiyonunu yeniler; masa/oyuncu kayıtlarını ve izinleri korur. Ön yüz açıklamaları da yeni kuralla birlikte yayımlanmalıdır.
+**v4 → v5 güncellemesi:** Supabase SQL Editor'de [host-summary-runoff.sql](supabase/host-summary-runoff.sql) çalıştırılır. Yeni kurulumda veya tüm kurulumu yenilemek için [setup.sql](supabase/setup.sql) kullanılabilir; ikisi de açık masaları, rolleri, oyları ve şifreleri korur. Güncelleme sırasında açık tekrar oylamaları da eşit adaylarını korur. Önce veritabanı, ardından ön yüz yayımlanır. `vote-plurality.sql` önceki v4 güncellemesinin tarihsel dosyasıdır; v5 üzerine uygulanmamalıdır.
+
+## Masa yönetimini devretme
+
+Masanın üstündeki **Masa sahibi** panelinden bağlı bir oyuncu seçilip **Yönetimi devret** ile yetkiler aktarılır. Yeni masa sahibi başlatma, rövanş ve çıkarma işlemlerini yönetir. Eski kurucunun rolü, numarası, oyu ve oyunculuğu değişmez; yalnızca izleyen kurucu izleyici kalır ve tekrar bağlanabilir. Oyun saatleri, konuşma sırası ve gece seçimleri korunur. Aşama numarasından bağımsız yönetim sürümü, eski ve çift devir isteklerini reddeder.
+
+Masa sahibinin bağlantısı, masada ayarlanan bağlantı bekleme süresince gelmezse bağlı oyuncular arasından otomatik yeni masa sahibi seçilir: önce yaşayanlar, sonra elenenler; aynı grupta en küçük oyuncu numarası. Bağlı kimse yoksa beklenir. Eski kurucu dönerek yetkiyi geri alamaz. Oyuncu olarak katılmışsa bağlantı eleme kuralları ayrıca işler. Saatlik 10 masa hakkı her zaman ilk kurucuya aittir; devir hakkı sıfırlamaz veya yeni sahibin kotasını tüketmez.
+
+## Oyun sonu: Perde arkası
+
+Oyun bitince tüm masa üyeleri **Perde arkası** bölümünde gecelere ve oylama turlarına ayrılmış özeti görür: kim kime oy verdi, vampir kimi hedefledi, doktor kimi korudu, hedef kurtuldu mu, hangi adaylar eşit kaldı ve kim idam edildi. Ayrılma nedeniyle geçersiz kalan hamleler ve tamamlanmayan gece/oylamalar belirtilir. Hamleler özel `round_actions` tablosunda tutulur; oyun sırasında RPC yanıtındaki `summary` alanı her rol ve izleyici için `null` olur. Üye olmayanlar özet okuyamaz. Rövanş yeni bir özet başlatır ve eski oyunun hamlelerini yeni oyuna taşımaz. Güncellemeden önce başlamış oyunlarda, önceki gece seçimleri geriye dönük üretilemediği için özetin eksik olabileceği ekranda belirtilir.
 
 ## Hazırlık, rövanş ve masa yönetimi
 
-Lobide her oyuncu **Hazırım** düğmesiyle kendi durumunu değiştirir. En az dört gerçek oyuncu, hepsi hazır ve bağlı olmadan başlatılamaz. İzleyici masa sahibi hazır sayısına dahil değildir. Oyun sonunda yalnızca kurucu **Aynı masada rövanş** açar: kod, numaralar, ayarlar ve şifre korunur; herkes yeniden hazır olur ve roller yeniden çekilir. Yeni masa hakkı harcanmaz. Aşama numarası sürekli artar; eski oylar ve hamleler rövanşa taşınmaz. Eski ses bağlantıları kapatılır.
+Lobide her oyuncu **Hazırım** düğmesiyle kendi durumunu değiştirir. En az dört gerçek oyuncu, hepsi hazır ve bağlı olmadan başlatılamaz. İzleyici masa sahibi hazır sayısına dahil değildir. Oyun sonunda yalnızca mevcut masa sahibi **Aynı masada rövanş** açar: kod, numaralar, ayarlar ve şifre korunur; herkes yeniden hazır olur ve roller yeniden çekilir. Yeni masa hakkı harcanmaz. Aşama numarası sürekli artar; eski oylar ve hamleler rövanşa taşınmaz. Eski ses bağlantıları kapatılır.
 
 **Şifreli masa** isteğe bağlıdır ve kapalı başlar. Açılınca tam dört rakam gerekir; baştaki sıfırlar korunur. Şifre URL, QR, tarayıcı depolaması veya durum yanıtına eklenmez. Veritabanında masaya özel tuzla SHA-256 özeti tutulur. Aynı misafir kimliğinin aynı masada beş hatalı denemesi beş dakika bekletilir. Önceden katılmış üyeler aynı tarayıcıyla şifreyi yeniden girmeden dönebilir. Eski katılma RPC’si yeni üyeler için şifreyi atlayamaz.
 
-Kurucu, oyuncu listesindeki çıkarma düğmesiyle başka bir oyuncuyu masadan çıkarabilir. Çıkarılan kimlik o masaya tekrar giremez; rövanş bu engeli kaldırmaz. Aktif oyundaki çıkarma da elemeye ve kazanma kurallarına tabidir, idam sayılmaz. Bu arkadaş grubu uygulaması anonim tarayıcı kimliği kullanır; tarayıcı verisini silerek yeni kimlik oluşturmayı engelleyen hesap/IP yasağı yoktur.
+Mevcut masa sahibi, oyuncu listesindeki çıkarma düğmesiyle başka bir oyuncuyu masadan çıkarabilir. Çıkarılan kimlik o masaya tekrar giremez; rövanş bu engeli kaldırmaz. Aktif oyundaki çıkarma da elemeye ve kazanma kurallarına tabidir, idam sayılmaz. Bu arkadaş grubu uygulaması anonim tarayıcı kimliği kullanır; tarayıcı verisini silerek yeni kimlik oluşturmayı engelleyen hesap/IP yasağı yoktur.
 
 Bağlantı, oyun durumunun son başarılı alınmasına göre ölçülür. 20 saniye haber alınmayan oyuncunun yanında kalan bekleme süresi görünür. Ayarlanan süre dolunca sunucu sonraki durum/hamle sorgusunda elemeyi uygular; sonradan gelen bir kalp atışı oyuncuyu diriltmez. Bekleme odasında süresi dolanın koltuğu boşalır; oyun başlamadıysa boş yer oldukça dönebilir, yeniden hazır olması gerekir. Aktif oyunda dönen elenmiş kişi sadece izler. Süresi dolan konuşmacı atlanır; eksik gece hamlesi ve oylar kalan oyunculara göre çözülür. Herkes çevrimdışıysa hesaplama ilk geri dönüşte yapılır; ayrıca zamanlayıcı servisi gerekmez.
 

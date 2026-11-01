@@ -66,6 +66,8 @@ import { useGameSounds } from "./sound/useGameSounds";
 import { LobbyStories } from "./LobbyStories";
 import { LobbyReadiness, RematchControls } from "./LobbyReadiness";
 import { ConnectionStatus, KickButton, eliminationText } from "./RoomManagement";
+import { HostManagement } from "./HostManagement";
+import { GameRecap } from "./GameRecap";
 
 type Panel = "create" | "join" | "rules" | "theme" | "role" | null;
 function Modal({
@@ -204,7 +206,9 @@ function Rules() {
         <li>
           <strong>En çok oy alan elenir.</strong> Tek başına en çok oyu alan
           oyuncu idam edilir. En yüksek oy birden fazla kişide eşitse ek
-          tartışma ve yeni oylama yapılır.
+          tartışma yapılır; yeni oylamada yalnızca birincilikte eşit kalan
+          adaylar seçilebilir. Herkes yine oy kullanır. Tek aday kalırsa
+          kendine oy veremediği için oylamaya katılmaz.
         </li>
       </ol>
       <div className="rule-box">
@@ -320,6 +324,7 @@ export default function App() {
       prev &&
       prev.code === data.code &&
       (prev.seq > data.seq ||
+        (prev.host?.revision || 0) > (data.host?.revision || 0) ||
         (prev.seq === data.seq &&
           (prev.speech?.turn_index || 0) > (data.speech?.turn_index || 0)))
         ? prev
@@ -444,6 +449,7 @@ export default function App() {
       else if (action === "ready") await rpc("vk_ready", { p_code: code, p_seq: game.seq, p_ready: !game.me?.ready });
       else if (action === "kick") await rpc("vk_kick", { p_code: code, p_seq: game.seq, p_target: target });
       else if (action === "rematch") await rpc("vk_rematch", { p_code: code, p_seq: game.seq });
+      else if (action === "transfer") await rpc("vk_transfer_host", { p_code: code, p_revision: game.host?.revision, p_target: target });
       else if (action === "speak")
         await rpc("vk_speak", {
           p_code: code,
@@ -494,7 +500,7 @@ export default function App() {
   const canChoose =
     !!game &&
     game.me?.alive &&
-    ((game.phase === "voting" && !game.my_vote) ||
+    ((game.phase === "voting" && game.can_vote !== false && !game.my_vote) ||
       (game.phase === "night" && game.my_turn && !game.has_chosen));
   const allowed = (p: Player) =>
     p.alive &&
@@ -502,6 +508,8 @@ export default function App() {
       ? p.id !== game.me?.id || !game.me?.self_heal_used
       : p.id !== game?.me?.id);
   const currentRole = game?.me?.role || "villager";
+  const votingCandidates = game?.vote_candidates?.length
+    ? alive.filter(p => game.vote_candidates?.includes(p.id)) : alive;
   const phaseText: Record<string, string> = {
     lobby: "Ateşin etrafında toplanıyoruz",
     dealing: "Kader kartların karılıyor…",
@@ -832,6 +840,7 @@ export default function App() {
                 </button>
               )}
             </div>
+            <HostManagement game={game} busy={busy} onTransfer={(id) => act("transfer", id)} />
             {game.is_observer && (
               <div className="observer-notice">
                 <Monitor size={18} />
@@ -976,7 +985,7 @@ export default function App() {
                       {game.is_host && game.is_observer ? (
                         "Sen masa sahibisin. En az 4 oyuncu hazır olduğunda oyunu başlatabilirsin."
                       ) : game.is_observer ? (
-                        "Şu anda masa dolu. Bir koltuk boşalınca hazırlığa katılabilirsin."
+                        "Masayı izliyorsun. Gizli rolün veya oyun numaran yok."
                       ) : (
                         <>
                           Sen #{game.me?.number} numaralı oyuncusun. Numaran
@@ -1169,14 +1178,14 @@ export default function App() {
                           </p>
                           <div className="vote-progress">
                             <span>
-                              {game.votes_cast}/{alive.length} kişi oy verdi
+                              {game.votes_cast}/{game.votes_required ?? alive.length} kişi oy verdi
                             </span>
                             <span>Eşitlikte tekrar</span>
                           </div>
                           <div className="progress-track">
                             <span
                               style={{
-                                width: `${(game.votes_cast / alive.length) * 100}%`,
+                                width: `${(game.votes_cast / Math.max(1, game.votes_required ?? alive.length)) * 100}%`,
                               }}
                             />
                           </div>
@@ -1209,10 +1218,16 @@ export default function App() {
                           </p>
                         </>
                       )}
+                      {["runoff", "voting"].includes(game.phase) && !!game.vote_candidates?.length && <div className="runoff-candidates">
+                        <strong>Bu oylamanın adayları</strong>
+                        {votingCandidates.map(p => `#${p.number} ${p.name}`).join(" · ")}
+                        <br />Herkes oy verir; yalnızca bu adaylar seçilebilir. Yeniden eşitlik olursa sadece yeni birinciler kalır.
+                        {game.phase === "voting" && game.me?.alive && game.can_vote === false && <p>Tek aday sensin. Kendine oy veremediğin için bu oylamaya katılmıyorsun; diğer oyuncuların oyları bekleniyor.</p>}
+                      </div>}
                       {canChoose && (
                         <div className="target-area">
                           <div className="target-grid">
-                            {alive.map((p) => (
+                            {(game.phase === "voting" ? votingCandidates : alive).map((p) => (
                               <button
                                 key={p.id}
                                 className={`target ${selected === p.id ? "selected" : ""}`}
@@ -1258,7 +1273,7 @@ export default function App() {
                       )}
                       {game.phase === "voting" && game.my_vote && (
                         <div className="results-list">
-                          {alive.map((p) => (
+                          {votingCandidates.map((p) => (
                             <div className="result-row" key={p.id}>
                               <span className="number-badge">{p.number}</span>
                               <strong>{p.name}</strong>
@@ -1340,6 +1355,7 @@ export default function App() {
                     </aside>
                   </div>
                 )}
+                <GameRecap game={game} />
                 {game.events.length > 0 && (
                   <details className="event-log">
                     <summary>

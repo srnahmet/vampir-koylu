@@ -121,6 +121,17 @@ export type Game = {
   settings: Settings;
   is_host: boolean;
   is_observer: boolean;
+  host?: {
+    player_id: string | null;
+    name: string;
+    online: boolean;
+    revision: number;
+    recovery_ends_at: string | null;
+  };
+  vote_candidates?: string[];
+  votes_required?: number;
+  can_vote?: boolean;
+  summary?: { complete: boolean; actions: RoundAction[] } | null;
   players: Player[];
   me: Player | null;
   speech: {
@@ -147,6 +158,16 @@ export type Game = {
     name?: string;
   } | null;
   events: { day: number; text: string }[];
+};
+export type RoundAction = {
+  id: number;
+  day: number;
+  seq: number;
+  kind: "vote" | "kill" | "protect" | "vote_result";
+  actor: string | null;
+  target: string | null;
+  status: "pending" | "cancelled" | "counted" | "resolved" | "tie" | "execution";
+  details: { outcome?: "saved" | "killed" | "missed"; candidates?: string[] };
 };
 export const roles: Record<
   Role,

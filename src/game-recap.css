@@ -1,0 +1,13 @@
+.game-recap { margin: 22px 0; padding: 28px; }
+.game-recap h2 { display: flex; align-items: center; gap: 10px; font-size: 27px; margin: 9px 0; }
+.game-recap > p { color: var(--muted); font-size: 13px; line-height: 1.7; }
+.recap-group { margin-top: 12px; border: 1px solid var(--line); border-radius: 11px; overflow: hidden; }
+.recap-group summary { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; cursor: pointer; font-size: 13px; background: var(--accent-soft); }
+.recap-group ul { list-style: none; margin: 0; padding: 3px 16px; }
+.recap-group li { padding: 11px 0; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+.recap-group li + li { border-top: 1px dashed var(--line); }
+.recap-group .cancelled { color: var(--muted); }
+.recap-note { border-left: 3px solid var(--line); padding-left: 12px; }
+.runoff-candidates { margin: 18px 0; padding: 15px; border: 1px dashed var(--line); border-radius: 10px; font-size: 12px; line-height: 1.7; }
+.runoff-candidates strong { display: block; margin-bottom: 4px; }
+@media(max-width: 480px) { .game-recap { padding: 20px 16px; } }

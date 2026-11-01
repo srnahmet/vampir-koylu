@@ -1,4 +1,4 @@
--- Vampir Köylü v4. Idempotent upgrade: preserves existing rooms and players.
+-- Vampir Köylü v5. Idempotent upgrade: preserves existing rooms and players.
 -- Secrets, roles and ballots live in an unexposed schema. Clients only call RPCs.
 begin;
 create schema if not exists vk_private;
@@ -30,6 +30,17 @@ alter table vk_private.rooms add column if not exists speech_ends_at timestamptz
 alter table vk_private.rooms add column if not exists round_number int not null default 1;
 alter table vk_private.rooms add column if not exists pin_hash text;
 
+-- Creator identity stays fixed for quota; hosting may move independently.
+alter table vk_private.rooms add column if not exists creator_id uuid;
+update vk_private.rooms set creator_id=host_id where creator_id is null;
+alter table vk_private.rooms alter column creator_id set not null;
+alter table vk_private.rooms add column if not exists host_seen_at timestamptz not null default now();
+alter table vk_private.rooms add column if not exists host_revision int not null default 0;
+alter table vk_private.rooms add column if not exists observer_ids uuid[] not null default '{}';
+alter table vk_private.rooms add column if not exists vote_candidates uuid[] not null default '{}';
+alter table vk_private.rooms add column if not exists summary_complete boolean not null default false;
+create index if not exists vk_rooms_creator on vk_private.rooms(creator_id,created_at);
+
 create table if not exists vk_private.players (
  id uuid primary key default gen_random_uuid(),
  room_id uuid not null references vk_private.rooms(id) on delete cascade,
@@ -53,6 +64,35 @@ create table if not exists vk_private.votes (
 alter table vk_private.players add column if not exists ready boolean not null default false;
 alter table vk_private.players add column if not exists kicked boolean not null default false;
 alter table vk_private.players add column if not exists participating boolean not null default true;
+-- Persist role-free observer membership after a host hands over management.
+update vk_private.rooms r set observer_ids=array_append(observer_ids,host_id)
+ where not (host_id=any(observer_ids)) and not exists(select 1 from vk_private.players p where p.room_id=r.id and p.user_id=r.host_id);
+create table if not exists vk_private.round_actions (
+ id bigint generated always as identity primary key,
+ room_id uuid not null references vk_private.rooms(id) on delete cascade,
+ round_number int not null, seq int not null, day int not null,
+ kind text not null, actor uuid references vk_private.players(id), target uuid references vk_private.players(id),
+ status text not null default 'pending', details jsonb not null default '{}'
+);
+alter table vk_private.round_actions enable row level security;
+create index if not exists vk_round_actions_room on vk_private.round_actions(room_id,round_number,id);
+
+-- Existing tied games keep their original leaders across this upgrade.
+do $upgrade$
+declare r vk_private.rooms; candidates uuid[];
+begin
+ for r in select * from vk_private.rooms where cardinality(vote_candidates)=0 and
+  (phase='runoff' or (phase='voting' and announcement->>'kind'='tie')) for update loop
+  with totals as (
+   select target,count(*) n from vk_private.votes where room_id=r.id and seq=(
+    select max(seq) from vk_private.votes where room_id=r.id and seq<r.seq) group by target
+  ) select array_agg(t.target) into candidates from totals t join vk_private.players p on p.id=t.target
+    where t.n=(select max(n) from totals) and p.alive and p.participating and not p.kicked;
+  update vk_private.rooms set vote_candidates=coalesce(candidates,'{}'::uuid[]) where id=r.id;
+ end loop;
+end $upgrade$;
+
+
 create table if not exists vk_private.early_votes (
  room_id uuid not null references vk_private.rooms(id) on delete cascade,
  seq integer not null,
@@ -139,12 +179,30 @@ begin
   'voice_enabled',coalesce((raw->>'voice_enabled')::boolean,false) and coalesce((raw->>'turn_based')::boolean,false));
 end $$;
 
+-- Called under the room lock; no client can claim hosting or choose an automatic heir.
+create or replace function vk_private.maintain_host(rid uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+declare r vk_private.rooms; successor vk_private.players; seen timestamptz;
+begin
+ select * into r from vk_private.rooms where id=rid for update;
+ if not found then return; end if;
+ select greatest(r.host_seen_at,last_seen) into seen from vk_private.players where room_id=rid and user_id=r.host_id and not kicked;
+ seen:=coalesce(seen,r.host_seen_at);
+ if seen>now()-make_interval(secs=>coalesce((r.settings->>'disconnect_seconds')::int,60)) then return; end if;
+ select * into successor from vk_private.players where room_id=rid and participating and not kicked and user_id<>r.host_id
+  and last_seen>now()-interval '20 seconds' order by alive desc,number,id limit 1;
+ if not found then return; end if;
+ update vk_private.rooms set host_id=successor.user_id,host_seen_at=successor.last_seen,host_revision=host_revision+1,
+  events=events||jsonb_build_array(jsonb_build_object('day',r.day,'text',format('Masa yönetimi bağlantı süresi dolduğu için #%s %s oyuncusuna geçti.',successor.number,successor.name))) where id=rid;
+end $$;
+
 -- Room lock serializes joining, dealing, actions and timer transitions.
 -- Timers use database time. No host browser or scheduled server is required.
 create or replace function vk_private.reconcile(rid uuid) returns void
 language plpgsql security definer set search_path = '' as $$
 declare r vk_private.rooms; p vk_private.players; changed boolean:=false; reset_night boolean:=false; living int; has_vampire boolean;
 begin
+ perform vk_private.maintain_host(rid);
  select * into r from vk_private.rooms where id=rid for update;
  if not found or r.phase='finished' then return; end if;
  for p in select * from vk_private.players where room_id=rid and participating and alive and not kicked
@@ -157,10 +215,22 @@ begin
   if changed then update vk_private.rooms set events=r.events where id=rid; end if;
   return;
  end if;
+ -- Keep tied candidates restricted even when someone departs. With one candidate,
+ -- that candidate is excused from voting (self-votes remain forbidden).
+ if cardinality(r.vote_candidates)>0 then
+  select coalesce(array_agg(id order by number),'{}'::uuid[]) into r.vote_candidates from vk_private.players
+   where room_id=rid and id=any(r.vote_candidates) and alive and participating and not kicked;
+  update vk_private.rooms set vote_candidates=r.vote_candidates where id=rid;
+ end if;
+ update vk_private.round_actions a set status='cancelled' where a.room_id=rid and a.round_number=r.round_number and a.seq=r.seq and a.kind='vote' and a.status='pending' and
+  (not exists(select 1 from vk_private.players where id=a.actor and alive and participating and not kicked)
+   or not exists(select 1 from vk_private.players where id=a.target and alive and participating and not kicked)
+   or (cardinality(r.vote_candidates)>0 and not (a.target=any(r.vote_candidates))));
  -- Invalid ballots are released so remaining voters can choose a living target.
  delete from vk_private.votes v where v.room_id=rid and v.seq=r.seq and
   (not exists(select 1 from vk_private.players where id=v.voter and alive and participating and not kicked)
-   or not exists(select 1 from vk_private.players where id=v.target and alive and participating and not kicked));
+   or not exists(select 1 from vk_private.players where id=v.target and alive and participating and not kicked)
+   or (cardinality(r.vote_candidates)>0 and not (v.target=any(r.vote_candidates))));
  delete from vk_private.early_votes v where v.room_id=rid and v.seq=r.seq and
   not exists(select 1 from vk_private.players where id=v.voter and alive and participating and not kicked);
  select count(*),coalesce(bool_or(role='vampire'),false) into living,has_vampire from vk_private.players where room_id=rid and participating and alive and not kicked;
@@ -172,6 +242,7 @@ begin
  if r.phase='night' and r.victim is not null and not exists(select 1 from vk_private.players where id=r.victim and alive and participating and not kicked) then
   -- A cancelled, unresolved protection must not consume the doctor's only self-save.
   update vk_private.players set self_heal_used=false where id=r.protected and role='doctor';
+  update vk_private.round_actions set status='cancelled' where room_id=rid and round_number=r.round_number and day=r.day and kind in ('kill','protect') and status='pending';
   r.victim:=null; r.protected:=null; r.night_step:='vampire';
   r.ends_at:=now()+make_interval(secs=>(r.settings->>'night_seconds')::int);
   changed:=true; reset_night:=true;
@@ -186,7 +257,7 @@ end $$;
 create or replace function vk_private.advance(rid uuid) returns void
 language plpgsql security definer set search_path = '' as $$
 declare r vk_private.rooms; alive_count int; votes_count int; needed int;
- target_id uuid; p vk_private.players; night_next boolean := false; dur int; jumped int;
+ target_id uuid; leaders uuid[]; p vk_private.players; night_next boolean := false; dur int; jumped int; required_voters int;
 begin
  perform vk_private.reconcile(rid);
  select * into r from vk_private.rooms where id=rid for update;
@@ -236,6 +307,10 @@ begin
    r.night_step:='resolve';
   end if;
   if r.night_step='resolve' then
+   update vk_private.round_actions set status='resolved',details=jsonb_build_object('outcome',
+    case when kind='kill' then case when r.victim is not distinct from r.protected then 'saved' else 'killed' end
+    else case when r.victim is not distinct from r.protected then 'saved' else 'missed' end end)
+    where room_id=rid and round_number=r.round_number and day=r.day and kind in ('kill','protect') and status='pending';
    if r.victim is distinct from r.protected then
     update vk_private.players set alive=false,eliminated_by='vampire' where id=r.victim returning * into p;
     r.announcement:=jsonb_build_object('kind','night_death','number',p.number,'name',p.name,'text',format('%s · %s bu gece köye veda etti.',p.number,p.name));
@@ -249,16 +324,21 @@ begin
   r.day:=r.day+1; r.phase:='day'; dur:=(r.settings->>'day_seconds')::int;
  when 'voting' then
   select count(*) into votes_count from vk_private.votes where room_id=rid and seq=r.seq;
-  if votes_count<alive_count then return; end if;
-  -- Execution uses a unique plurality; the strict majority above is only for early transitions.
+  required_voters:=alive_count-case when cardinality(r.vote_candidates)=1 then 1 else 0 end;
+  if votes_count<required_voters then return; end if;
+  -- Only first-place ties advance. The strict majority above is solely for early transitions.
   with totals as (
    select target,count(*) n from vk_private.votes where room_id=rid and seq=r.seq group by target
-  ), leaders as (
-   select target,count(*) over () tied from totals where n=(select max(n) from totals)
-  ) select target into target_id from leaders where tied=1;
+  ) select array_agg(target order by target) into leaders from totals where n=(select max(n) from totals);
+  target_id:=case when cardinality(leaders)=1 then leaders[1] else null end;
+  update vk_private.round_actions set status='counted' where room_id=rid and round_number=r.round_number and seq=r.seq and kind='vote' and status='pending';
+  insert into vk_private.round_actions(room_id,round_number,seq,day,kind,target,status,details)
+   values(rid,r.round_number,r.seq,r.day,'vote_result',target_id,case when target_id is null then 'tie' else 'execution' end,
+    jsonb_build_object('candidates',coalesce(leaders,'{}'::uuid[])));
   if target_id is null then
+   r.vote_candidates:=coalesce(leaders,'{}'::uuid[]);
    r.phase:='runoff'; dur:=(r.settings->>'runoff_seconds')::int;
-   r.announcement:=jsonb_build_object('kind','tie','text','En yüksek oyda eşitlik var. Biraz daha konuşalım; ardından oylar yeniden açılacak.');
+   r.announcement:=jsonb_build_object('kind','tie','text','En yüksek oyda eşitlik var. Biraz daha konuşalım; ardından yalnızca birincilikte eşit kalan adaylar oylanacak.');
    r.events:=r.events||jsonb_build_array(jsonb_build_object('day',r.day,'text','Oylamada en yüksek oy eşit çıktı.'));
   else
    update vk_private.players set alive=false,eliminated_by='village' where id=target_id returning * into p;
@@ -273,6 +353,7 @@ begin
  else return;
  end case;
 
+ if r.phase not in ('runoff','voting') then r.vote_candidates:='{}'; end if;
  if night_next then
   select count(*) into alive_count from vk_private.players where room_id=rid and alive;
   if alive_count<=3 then r.phase:='finished'; r.winner:='vampire'; dur:=0;
@@ -289,7 +370,7 @@ begin
  end if;
  update vk_private.rooms set phase=r.phase,seq=r.seq+1,day=r.day,started_at=now(),
   ends_at=now()+make_interval(secs=>dur),night_step=r.night_step,victim=r.victim,protected=r.protected,
-  winner=r.winner,announcement=r.announcement,events=r.events,
+  winner=r.winner,announcement=r.announcement,events=r.events,vote_candidates=r.vote_candidates,
   speech_order=r.speech_order,speech_turn=r.speech_turn,speech_slot_ms=r.speech_slot_ms,speech_ends_at=r.speech_ends_at where id=rid;
 end $$;
 
@@ -297,9 +378,9 @@ create or replace function vk_private.room_quota(uid uuid) returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare used int; next_at timestamptz;
 begin
- select count(*) into used from vk_private.rooms where host_id=uid and created_at>now()-interval '1 hour';
+ select count(*) into used from vk_private.rooms where creator_id=uid and created_at>now()-interval '1 hour';
  select created_at+interval '1 hour' into next_at from vk_private.rooms
-  where host_id=uid and created_at>now()-interval '1 hour'
+  where creator_id=uid and created_at>now()-interval '1 hour'
   order by created_at offset greatest(used-10,0) limit 1;
  return jsonb_build_object('limit',10,'used',used,'remaining',greatest(0,10-used),
   'next_refresh_at',next_at,'server_now',now());
@@ -323,7 +404,7 @@ begin
  loop
   c:=upper(substr(replace(gen_random_uuid()::text,'-',''),1,6));
   begin
-   insert into vk_private.rooms(code,host_id,settings) values(c,uid,cfg) returning id into rid; exit;
+   insert into vk_private.rooms(code,host_id,creator_id,observer_ids,settings) values(c,uid,uid,case when (cfg->>'host_plays')::boolean then '{}'::uuid[] else array[uid] end,cfg) returning id into rid; exit;
   exception when unique_violation then null; end;
  end loop;
  if (cfg->>'pin_enabled')::boolean then update vk_private.rooms set pin_hash=encode(sha256(convert_to(rid::text||':'||p_pin,'UTF8')),'hex') where id=rid; end if;
@@ -348,7 +429,7 @@ begin
   if member.kicked then raise exception using errcode='VK001',message='Bu masadan çıkarıldın.'; end if;
   return r.code;
  end if;
- if r.host_id=uid and not coalesce((r.settings->>'host_plays')::boolean,true) then return r.code; end if;
+ if uid=any(r.observer_ids) then return r.code; end if;
  if r.created_at<now()-interval '24 hours' then raise exception 'Bu masanın süresi dolmuş. Yeni bir masa kurun.'; end if;
  if r.phase<>'lobby' then raise exception 'Oyun başladı; artık bu masaya katılamazsın.'; end if;
  if p_name is null or char_length(btrim(p_name)) not between 1 and 20 then raise exception 'İsmin 1–20 karakter olmalı.'; end if;
@@ -366,7 +447,7 @@ declare uid uuid:=vk_private.require_user(); r vk_private.rooms;
 begin
  select * into r from vk_private.rooms where code=upper(btrim(p_code)) for update;
  if not found then raise exception 'Bu kodla bir masa bulunamadı.'; end if;
- if r.pin_hash is not null and r.host_id<>uid and not exists(select 1 from vk_private.players where room_id=r.id and user_id=uid) then raise exception 'Bu masa şifreli. Sayfayı yenileyip masa şifresiyle katıl.'; end if;
+ if r.pin_hash is not null and r.host_id<>uid and not (uid=any(r.observer_ids)) and not exists(select 1 from vk_private.players where room_id=r.id and user_id=uid) then raise exception 'Bu masa şifreli. Sayfayı yenileyip masa şifresiyle katıl.'; end if;
  return vk_private.enroll(r,p_name);
 end $$;
 
@@ -377,7 +458,7 @@ declare uid uuid:=vk_private.require_user(); r vk_private.rooms; attempt vk_priv
 begin
  select * into r from vk_private.rooms where code=upper(btrim(p_code)) for update;
  if not found then raise exception 'Bu kodla bir masa bulunamadı.'; end if;
- if r.host_id=uid or exists(select 1 from vk_private.players where room_id=r.id and user_id=uid) then
+ if r.host_id=uid or uid=any(r.observer_ids) or exists(select 1 from vk_private.players where room_id=r.id and user_id=uid) then
   return jsonb_build_object('code',vk_private.enroll(r,p_name));
  end if;
  if r.pin_hash is not null then
@@ -417,7 +498,10 @@ language plpgsql security definer set search_path = '' as $$
 declare uid uuid:=vk_private.require_user(); r vk_private.rooms;
 begin
  select * into r from vk_private.rooms where code=upper(btrim(p_code)) for update;
- if not found or r.host_id<>uid then raise exception 'Rövanşı yalnızca masayı kuran kişi açabilir.'; end if;
+ if not found then raise exception 'Masa bulunamadı.'; end if;
+ perform vk_private.maintain_host(r.id);
+ select * into r from vk_private.rooms where id=r.id;
+ if r.host_id<>uid then raise exception 'Rövanşı yalnızca masa sahibi açabilir.'; end if;
  -- A repeated tap must not clear players who have already readied for the rematch.
  if r.phase='lobby' and r.round_number>1 and r.seq=p_seq+1 then return; end if;
  if r.phase<>'finished' or r.seq is distinct from p_seq then raise exception 'Rövanş yalnızca oyun bittikten sonra açılabilir.'; end if;
@@ -425,7 +509,7 @@ begin
  -- Past ballots remain scoped to their old sequence; new rounds never reuse tokens.
  update vk_private.rooms set phase='lobby',seq=seq+1,round_number=round_number+1,day=1,
   started_at=now(),ends_at=null,night_step=null,victim=null,protected=null,winner=null,announcement=null,events='[]',
-  speech_order='{}',speech_turn=0,speech_slot_ms=0,speech_ends_at=null where id=r.id;
+  speech_order='{}',speech_turn=0,speech_slot_ms=0,speech_ends_at=null,vote_candidates='{}',summary_complete=false where id=r.id;
  -- Old voice negotiations cannot be reused in a new game.
  delete from vk_private.voice_signals where room_id=r.id;
  delete from vk_private.voice_peers where room_id=r.id;
@@ -437,9 +521,10 @@ declare uid uuid:=vk_private.require_user(); r vk_private.rooms; ids uuid[];
  idx int:=2; doctor_mode text; jester_mode text;
 begin
  select * into r from vk_private.rooms where code=upper(btrim(p_code)) for update;
- if not found or r.host_id<>uid then raise exception 'Oyunu yalnızca masayı kuran kişi başlatabilir.'; end if;
+ if not found then raise exception 'Masa bulunamadı.'; end if;
  perform vk_private.advance(r.id);
  select * into r from vk_private.rooms where id=r.id;
+ if r.host_id<>uid then raise exception 'Oyunu yalnızca masa sahibi başlatabilir.'; end if;
  if r.phase<>'lobby' then raise exception 'Oyun zaten başladı.'; end if;
  select array_agg(id order by random()) into ids from vk_private.players where room_id=r.id and participating and alive and not kicked;
  if coalesce(cardinality(ids),0)<4 then raise exception 'Başlamak için en az 4 kişi gerekli.'; end if;
@@ -455,7 +540,7 @@ begin
   update vk_private.players set role='doctor' where id=ids[idx]; idx:=idx+1;
  end if;
  if jester_mode='always' or (jester_mode='random' and random()<0.5) then update vk_private.players set role='jester' where id=ids[idx]; end if;
- update vk_private.rooms set phase='dealing',seq=seq+1,started_at=now(),ends_at=now()+interval '7 seconds' where id=r.id;
+ update vk_private.rooms set phase='dealing',seq=seq+1,started_at=now(),ends_at=now()+interval '7 seconds',summary_complete=true,vote_candidates='{}' where id=r.id;
 end $$;
 
 create or replace function public.vk_act(p_code text,p_seq int,p_action text,p_target uuid default null) returns void
@@ -476,6 +561,7 @@ begin
   select * into target_player from vk_private.players where id=p_target and room_id=r.id and alive and participating and not kicked;
   if not found then raise exception 'Hayatta olan bir oyuncu seçmelisin.'; end if;
   if p_action='vote' and r.phase='voting' then
+   if cardinality(r.vote_candidates)>0 and not (p_target=any(r.vote_candidates)) then raise exception 'Yalnızca birincilikte eşit kalan adaylara oy verebilirsin.'; end if;
    if me.id=p_target then raise exception 'Kendine oy veremezsin.'; end if;
    if exists(select 1 from vk_private.votes where room_id=r.id and seq=r.seq and voter=me.id) then raise exception 'Oyun kaydedildi; değiştirilemez.'; end if;
    insert into vk_private.votes values(r.id,r.seq,me.id,p_target);
@@ -494,7 +580,29 @@ begin
   end if;
  else raise exception 'Bu aşamada bu hamleyi yapamazsın.';
  end if;
+ if p_action in ('vote','kill','protect') then
+  insert into vk_private.round_actions(room_id,round_number,seq,day,kind,actor,target)
+   values(r.id,r.round_number,r.seq,r.day,p_action,me.id,p_target);
+ end if;
  perform vk_private.advance(r.id);
+end $$;
+
+-- Revision token serializes transfers independently of game phase changes.
+create or replace function public.vk_transfer_host(p_code text,p_revision int,p_target uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+declare uid uuid:=vk_private.require_user(); r vk_private.rooms; successor vk_private.players;
+begin
+ select * into r from vk_private.rooms where code=upper(btrim(p_code)) for update;
+ if not found then raise exception 'Masa bulunamadı.'; end if;
+ perform vk_private.maintain_host(r.id);
+ select * into r from vk_private.rooms where id=r.id;
+ if r.host_id<>uid then raise exception 'Yönetimi yalnızca masa sahibi devredebilir.'; end if;
+ if p_revision is distinct from r.host_revision then raise exception 'Masa yönetimi değişti. Ekranı yenileyip tekrar dene.'; end if;
+ select * into successor from vk_private.players where id=p_target and room_id=r.id and participating and not kicked and last_seen>now()-interval '20 seconds';
+ if not found then raise exception 'Masada bağlı olan bir oyuncu seçmelisin.'; end if;
+ if successor.user_id=uid then raise exception 'Zaten masa sahibisin.'; end if;
+ update vk_private.rooms set host_id=successor.user_id,host_seen_at=successor.last_seen,host_revision=host_revision+1,
+  events=events||jsonb_build_array(jsonb_build_object('day',r.day,'text',format('Masa yönetimi #%s %s oyuncusuna devredildi.',successor.number,successor.name))) where id=r.id;
 end $$;
 
 create or replace function public.vk_state(p_code text) returns jsonb
@@ -506,7 +614,7 @@ begin
  select * into r from vk_private.rooms where code=upper(btrim(p_code)) for update;
  if not found then raise exception 'Masa bulunamadı.'; end if;
  select * into me from vk_private.players where room_id=r.id and user_id=uid;
- if not found and r.host_id<>uid then raise exception 'Önce bu masaya katılmalısın.'; end if;
+ if not found and r.host_id<>uid and not (uid=any(r.observer_ids)) then raise exception 'Önce bu masaya katılmalısın.'; end if;
  if me.kicked then raise exception using errcode='VK001',message='Bu masadan çıkarıldın.'; end if;
  -- Reconcile before the heartbeat: returning after the deadline cannot revive a player.
  perform vk_private.advance(r.id);
@@ -520,6 +628,9 @@ begin
    eliminated_by=case when can_rejoin then null else eliminated_by end
    where id=me.id returning * into me;
  end if;
+ perform vk_private.maintain_host(r.id);
+ update vk_private.rooms set host_seen_at=now() where id=r.id and host_id=uid;
+ select * into r from vk_private.rooms where id=r.id;
  observer:=me.id is null or not me.participating;
  select coalesce(jsonb_agg(jsonb_build_object('id',id,'number',number,'name',name,'alive',alive,
   'online',last_seen>now()-interval '20 seconds','ready',ready,
@@ -546,7 +657,16 @@ begin
  end if;
  return jsonb_build_object('code',r.code,'phase',r.phase,'seq',r.seq,'day',r.day,'round_number',r.round_number,
   'started_at',r.started_at,'ends_at',r.ends_at,'server_now',now(),'settings',vk_private.settings(r.settings),
-  'is_host',r.host_id=uid,'is_observer',observer,'players',plist,'winner',r.winner,'announcement',r.announcement,'events',r.events,
+  'is_host',r.host_id=uid,'is_observer',observer,
+  'host',jsonb_build_object('player_id',(select id from vk_private.players where room_id=r.id and user_id=r.host_id),
+   'name',coalesce((select name from vk_private.players where room_id=r.id and user_id=r.host_id),'Paylaşım ekranı'),
+   'online',r.host_seen_at>now()-interval '20 seconds','revision',r.host_revision,
+   'recovery_ends_at',case when r.host_seen_at<=now()-interval '20 seconds' then r.host_seen_at+make_interval(secs=>coalesce((r.settings->>'disconnect_seconds')::int,60)) else null end),
+  'vote_candidates',r.vote_candidates,'votes_required',(select count(*) from vk_private.players where room_id=r.id and alive and participating and not kicked)-case when cardinality(r.vote_candidates)=1 then 1 else 0 end,
+  'can_vote',not observer and me.alive and not (cardinality(r.vote_candidates)=1 and me.id=r.vote_candidates[1]),
+  'summary',case when r.phase='finished' then jsonb_build_object('complete',r.summary_complete,'actions',
+   (select coalesce(jsonb_agg(jsonb_build_object('id',a.id,'day',a.day,'seq',a.seq,'kind',a.kind,'actor',a.actor,'target',a.target,'status',a.status,'details',a.details) order by a.id),'[]'::jsonb)
+    from vk_private.round_actions a where a.room_id=r.id and a.round_number=r.round_number)) else null end,'players',plist,'winner',r.winner,'announcement',r.announcement,'events',r.events,
   'me',case when observer then null else jsonb_build_object('id',me.id,'number',me.number,'name',me.name,'alive',me.alive,'ready',me.ready,
     'role',case when r.phase<>'lobby' then me.role else null end,'self_heal_used',me.self_heal_used,'eliminated_by',me.eliminated_by) end,
   'my_turn',turn,'has_chosen',chosen,'my_vote',picked,'tally',tally,'early_count',early_count,'early_mine',early_mine,
@@ -558,7 +678,10 @@ language plpgsql security definer set search_path = '' as $$
 declare uid uuid:=vk_private.require_user(); r vk_private.rooms; target_player vk_private.players;
 begin
  select * into r from vk_private.rooms where code=upper(btrim(p_code)) for update;
- if not found or r.host_id<>uid then raise exception 'Oyuncuyu yalnızca masa sahibi çıkarabilir.'; end if;
+ if not found then raise exception 'Masa bulunamadı.'; end if;
+ perform vk_private.maintain_host(r.id);
+ select * into r from vk_private.rooms where id=r.id;
+ if r.host_id<>uid then raise exception 'Oyuncuyu yalnızca masa sahibi çıkarabilir.'; end if;
  select * into target_player from vk_private.players where id=p_target and room_id=r.id;
  if not found then raise exception 'Bu oyuncu masada değil.'; end if;
  if target_player.user_id=uid then raise exception 'Kendini masadan çıkaramazsın.'; end if;
@@ -618,7 +741,7 @@ begin
  select * into r from vk_private.rooms where code=upper(btrim(p_code));
  if not found then raise exception 'Masa bulunamadı.'; end if;
  select * into me from vk_private.players where room_id=r.id and user_id=uid;
- if not found and r.host_id<>uid then raise exception 'Önce bu masaya katılmalısın.'; end if;
+ if not found and r.host_id<>uid and not (uid=any(r.observer_ids)) then raise exception 'Önce bu masaya katılmalısın.'; end if;
  if me.kicked then raise exception using errcode='VK001',message='Bu masadan çıkarıldın.'; end if;
  perform vk_private.advance(r.id);
  select * into r from vk_private.rooms where id=r.id;
@@ -676,6 +799,8 @@ begin
  if found then delete from vk_private.voice_signals where room_id=rid and (sender=p_session or recipient=p_session); end if;
 end $$;
 
+revoke all on function public.vk_transfer_host(text,int,uuid) from public,anon;
+grant execute on function public.vk_transfer_host(text,int,uuid) to authenticated;
 revoke all on all tables in schema vk_private from public,anon,authenticated;
 revoke all on all functions in schema vk_private from public,anon,authenticated;
 revoke all on function public.vk_quota(),public.vk_create(text,jsonb),public.vk_join(text,text),public.vk_start(text),public.vk_act(text,int,text,uuid),public.vk_state(text),public.vk_speak(text,int,int) from public,anon;

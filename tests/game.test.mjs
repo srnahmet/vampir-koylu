@@ -359,8 +359,9 @@ test("Database game rules and access boundaries", async (t) => {
       const ballots = await query("select * from vk_private.votes where room_id=$1 order by voter", [p[0].room_id]);
       const migration = await readFile(new URL("../supabase/vote-plurality.sql", import.meta.url), "utf8");
       const setup = await readFile(new URL("../supabase/setup.sql", import.meta.url), "utf8");
-      const func = setup.slice(setup.indexOf("create or replace function vk_private.advance("), setup.indexOf("create or replace function vk_private.room_quota(")).trim();
-      assert.ok(migration.includes(func), "standalone update matches the tested game engine");
+      const v4 = await readFile(new URL("./fixtures/setup-v4.sql", import.meta.url), "utf8");
+      const func = v4.slice(v4.indexOf("create or replace function vk_private.advance("), v4.indexOf("create or replace function vk_private.room_quota(")).trim();
+      assert.ok(migration.includes(func), "historical plurality update matches its v4 engine");
       await db.exec(migration);
       assert.deepEqual(await query("select * from vk_private.rooms where code=$1", [g.code]), before);
       assert.deepEqual(await query("select * from vk_private.votes where room_id=$1 order by voter", [p[0].room_id]), ballots);
@@ -369,6 +370,7 @@ test("Database game rules and access boundaries", async (t) => {
       await db.exec("reset role");
       await expire(g);
       assert.equal((await state(g)).announcement.number, p[0].number);
+      await db.exec(setup); // Restore the latest engine after exercising the historical migration.
     },
   );
   await t.test(
