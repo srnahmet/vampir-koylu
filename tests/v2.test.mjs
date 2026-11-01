@@ -245,7 +245,11 @@ test("Observer, early transitions, and two-round speaking", async (t) => {
     async () => {
       const g = await make(5, { turn_based: true });
       let s = await intro(g);
-      const dead = s.players[0].id;
+      // The vampire's death correctly finishes the game. This speaking-order
+      // fixture must remove a villager regardless of the random role deal.
+      const dead = (
+        await q("select id from vk_private.players where room_id=(select id from vk_private.rooms where code=$1) and role='villager' order by number limit 1", [g.code])
+      )[0].id;
       await q("update vk_private.players set alive=false where id=$1", [dead]);
       await q(
         "update vk_private.rooms set phase='night_result',ends_at=now()-interval '1 second' where code=$1",
