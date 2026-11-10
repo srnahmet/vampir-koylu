@@ -1,4 +1,4 @@
-import type { ArtworkRole } from "./game";
+import type { ArtworkRole } from "./domain";
 
 export type VillageStory = {
   id: string;
@@ -89,14 +89,14 @@ export const villageStories: readonly VillageStory[] = [
     title: "Şapkanın ağırlığı",
     text: "Muhtarın oyu iki sayılır. Sandıktan eşitlik çıkarsa son kararı yine o verir.",
     cast: ["mayor"],
-    kind: "upcoming",
+    kind: "tip",
   },
   {
     id: "kalkan-sozu",
     title: "Kalkanın sözü",
     text: "Koruma, koruduğu kişi saldırıya uğrarsa onun yerine ölür. Köyün en ağır sözü bazen ‘Ben buradayım’dır.",
     cast: ["bodyguard", "villager"],
-    kind: "upcoming",
+    kind: "tip",
     night: true,
   },
   {
@@ -104,14 +104,14 @@ export const villageStories: readonly VillageStory[] = [
     title: "Son bir ok",
     text: "Avcı elense bile son sözünü söyleyebilir: öldüğünde seçtiği bir oyuncuyu yanında götürür.",
     cast: ["hunter"],
-    kind: "upcoming",
+    kind: "tip",
   },
   {
     id: "sessiz-sabah",
     title: "Sabahın sessizliği",
     text: "Şamanın susturduğu köylü ertesi gün yalnızca oy verebilir. Tartışmada tek kelime konuşursa elenir.",
     cast: ["shaman", "villager"],
-    kind: "upcoming",
+    kind: "tip",
     night: true,
   },
   {
@@ -119,14 +119,14 @@ export const villageStories: readonly VillageStory[] = [
     title: "Tek kurşun",
     text: "Silahşörün tek atışı vardır. Köylüyü vurursa ertesi gün vicdan azabıyla kendi canına kıyar.",
     cast: ["gunslinger", "villager"],
-    kind: "upcoming",
+    kind: "tip",
   },
   {
     id: "kucuk-pelerin",
     title: "Küçük pelerin, büyük miras",
     text: "Vampir ölürse yavru vampir onun avlanma yeteneğini devralır. Küçük dişleri hafife alma.",
     cast: ["vampire_cub", "vampire"],
-    kind: "upcoming",
+    kind: "tip",
     night: true,
   },
   {
@@ -134,7 +134,7 @@ export const villageStories: readonly VillageStory[] = [
     title: "Ertesi gece iki iz",
     text: "Yavru vampir idam edilirse vampir ertesi gece iki kişiye saldırabilir. Köyün kararı geceyi değiştirebilir.",
     cast: ["vampire_cub", "vampire"],
-    kind: "upcoming",
+    kind: "tip",
     night: true,
   },
   {
@@ -142,28 +142,28 @@ export const villageStories: readonly VillageStory[] = [
     title: "İki farklı cesaret",
     text: "Doktor saldırıyı önler. Koruma ise koruduğu kişinin yerine ölümü üstlenir. Aynı niyet, iki farklı yol.",
     cast: ["doctor", "bodyguard"],
-    kind: "upcoming",
+    kind: "tip",
   },
   {
     id: "iki-sapka",
     title: "İki şapka, bir gündem",
     text: "Muhtar köyün bütçesini anlatıyordu. Silahşör, ‘Benim masrafım az, tek kurşun yeter’ dedi.",
     cast: ["mayor", "gunslinger"],
-    kind: "upcoming",
+    kind: "tip",
   },
   {
     id: "sessiz-suphe",
     title: "Sessiz şüphe",
     text: "Şaman sessizliği severdi. Soytarı, susarken bile şüphe çekmenin yolunu buldu.",
     cast: ["shaman", "jester"],
-    kind: "upcoming",
+    kind: "tip",
   },
   {
     id: "sut-disleri",
     title: "Süt dişleri",
     text: "Doktor yavru vampirin dişlerine baktı. ‘Bunlar süt dişi mi?’ sorusu köyü uzun süre meşgul etti.",
     cast: ["doctor", "vampire_cub"],
-    kind: "upcoming",
+    kind: "tip",
   },
   {
     id: "eski-ayna",
@@ -178,7 +178,7 @@ export const villageStories: readonly VillageStory[] = [
     title: "Ormandaki izler",
     text: "Avcı ormanda ayak izleri buldu. Vampir, ‘Akşam yürüyüşü sağlıktır’ diyerek konuyu değiştirdi.",
     cast: ["hunter", "vampire"],
-    kind: "upcoming",
+    kind: "tip",
     night: true,
   },
   {
@@ -230,7 +230,7 @@ export const villageStories: readonly VillageStory[] = [
     title: "Son çay",
     text: "Muhtar ‘Kim çay ister?’ diye sordu. Koruma kalkanını sehpa yaptı. Köy bir anlığına herkese güvendi.",
     cast: ["mayor", "bodyguard"],
-    kind: "upcoming",
+    kind: "tip",
   },
 ];
 

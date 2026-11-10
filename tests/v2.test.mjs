@@ -200,7 +200,7 @@ test("Observer, early transitions, and two-round speaking", async (t) => {
     },
   );
   await t.test(
-    "exactly two turns per player, then free discussion with original day clock",
+    "exactly two turns per player, then a fresh free discussion clock",
     async () => {
       const g = await make(4, { turn_based: true });
       let s = await intro(g);
@@ -218,13 +218,27 @@ test("Observer, early transitions, and two-round speaking", async (t) => {
       assert.equal(s.phase, "intro");
       assert.equal(s.speech.group, true);
       assert.equal(s.speech.speaker_id, null);
-      assert.equal(s.ends_at, ends);
+      assert.ok(Date.parse(s.ends_at) < Date.parse(ends));
+      assert.ok(Date.parse(s.ends_at) - Date.parse(s.server_now) > 298000);
       assert.equal(s.seq, seq);
       assert.equal(s.early_count, 1);
       for (const id of s.speech.order)
         assert.equal(turns.filter((p) => p === id).length, 2);
     },
   );
+  await t.test("large rooms get a configurable minimum turn and a full discussion afterward", async () => {
+    const g = await make(12, { turn_based: true, turn_seconds: 45, day_seconds: 300 });
+    let s = await intro(g);
+    assert.equal(s.speech.slot_ms, 45000);
+    assert.ok(Date.parse(s.ends_at) - Date.parse(s.server_now) >= (24 * 45 + 299) * 1000);
+    for (let i = 0; i < 24; i++) {
+      s = await state(g);
+      await speak(g, s, await speaker(g, s));
+    }
+    s = await state(g);
+    assert.equal(s.speech.group, true);
+    assert.ok(Date.parse(s.ends_at) - Date.parse(s.server_now) >= 299000);
+  });
   await t.test(
     "speaking timeout automatically advances while leaving voting requests intact",
     async () => {

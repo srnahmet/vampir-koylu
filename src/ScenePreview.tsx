@@ -2,6 +2,7 @@
 import { EventScene, type SceneKind } from "./EventScene";
 import { useState } from "react";
 import { VampireAttack } from "./VampireAttack";
+import { RoleEffect } from "./RoleEffect";
 import { Sprite } from "./art";
 import { SoundPreview } from "./sound/SoundPreview";
 import { LobbyStories } from "./LobbyStories";
@@ -16,7 +17,7 @@ export default function ScenePreview() {
       <SoundPreview />
       <section className="paper-card" style={{ padding: 24, marginBottom: 24 }}>
         <Sprite role="vampire_cub" />
-        <h2>Yavru Vampir · Yakında</h2>
+        <h2>Yavru Vampir · V2</h2>
         <button
           className="button primary"
           onClick={() => setAttack(`preview-${Date.now()}`)}
@@ -24,6 +25,7 @@ export default function ScenePreview() {
           Ölüm efektini dene
         </button>
       </section>
+      <div className="scene-preview-grid">{["mayor", "bodyguard", "hunter", "silence", "gunslinger", "guilt", "vampire_cub"].map(kind => <RoleEffect key={kind} kind={kind} />)}</div>
       <div className="scene-preview-grid">
         {(
           [

@@ -328,7 +328,11 @@ test("v4 → v5 production migration preserves active games and runs twice safel
   await expire(g); s=await state(g); await ballot(g,[2,2,0,2,2,2,2],s); await expire(g); s=await state(g);
   assert.equal(s.winner,"jester"); assert.equal(s.summary.complete,false); assert.equal(s.summary.actions.length,8);
   // Every changed function in the standalone migration is exactly the full setup version.
-  for(const m of migration.matchAll(/create or replace function [\w.]+\([^]*?end \$\$;/g)) assert.ok(setup.includes(m[0]),m[0].slice(0,80));
+  for(const m of migration.matchAll(/create or replace function [\w.]+\([^]*?end \$\$;/g)) {
+    // V2 deliberately changes speech and rematch behavior after the historical v5 migration.
+    if (/function (vk_private\.reconcile|vk_private\.advance|vk_private\.create_room|public\.vk_start|public\.vk_act|public\.vk_state|public\.vk_rematch)\(/.test(m[0])) continue;
+    assert.ok(setup.replace(/\r\n/g, '\n').includes(m[0].replace(/\r\n/g, '\n')),m[0].slice(0,80));
+  }
 });
 
 test("both upgrades preserve finalists when a v4 runoff vote is already open",async()=>{

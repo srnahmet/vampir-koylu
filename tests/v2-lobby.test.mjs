@@ -1,0 +1,44 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { PGlite } from "@electric-sql/pglite";
+
+test("V2 lobby settings, rename, and random themes are controlled by the server", async t => {
+  const db = new PGlite(); t.after(() => db.close());
+  await db.exec(`create role anon; create role authenticated; create schema auth;
+    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;`);
+  const setup = await readFile(new URL("../supabase/setup.sql", import.meta.url), "utf8");
+  const upgrade = await readFile(new URL("../supabase/v2.sql", import.meta.url), "utf8");
+  await db.exec(setup); await db.exec(upgrade); await db.exec(upgrade);
+  const query = async (sql, args=[]) => (await db.query(sql,args)).rows;
+  const call = async (uid, fn, args=[]) => {
+    await query("select set_config('request.jwt.claim.sub',$1,false)",[uid || ""]);
+    return (await query(`select public.${fn}(${args.map((_,i)=>`$${i+1}`).join(',')}) result`,args))[0].result;
+  };
+  const host=randomUUID(), player=randomUUID(), outsider=randomUUID();
+  const code=await call(host,"vk_create",["Ev sahibi",JSON.stringify({ random_theme:true, turn_based:true })]);
+  await call(player,"vk_join",[code,"Birinci"]);
+  let state=await call(player,"vk_state",[code]);
+  assert.notEqual(state.settings.theme,"random");
+  assert.equal(state.settings.random_theme,true);
+  await call(player,"vk_ready",[code,state.seq,true]);
+  await call(player,"vk_rename",[code,state.seq,"Yeni ad"]);
+  state=await call(player,"vk_state",[code]);
+  assert.equal(state.me.name,"Yeni ad"); assert.equal(state.me.ready,false);
+  await assert.rejects(() => call(outsider,"vk_rename",[code,state.seq,"Sahte"]));
+  await assert.rejects(() => call(player,"vk_update_lobby",[code,state.seq,JSON.stringify({})]),/masa sahibi/);
+  await assert.rejects(() => call(host,"vk_update_lobby",[code,state.seq,JSON.stringify({turn_seconds:29})]),/Süreler/);
+  await call(player,"vk_ready",[code,state.seq,true]);
+  await call(host,"vk_update_lobby",[code,state.seq,JSON.stringify({...state.settings, theme:"ocean", random_theme:false,turn_seconds:45})]);
+  state=await call(player,"vk_state",[code]);
+  assert.equal(state.settings.theme,"ocean"); assert.equal(state.settings.turn_seconds,45); assert.equal(state.me.ready,false);
+  await call(host,"vk_update_lobby",[code,state.seq,JSON.stringify({...state.settings, random_theme:true})]);
+  state=await call(host,"vk_state",[code]); const first=state.settings.theme;
+  await query("update vk_private.rooms set phase='finished' where code=$1",[code]);
+  await call(host,"vk_rematch",[code,state.seq]);
+  state=await call(host,"vk_state",[code]);
+  assert.equal(state.settings.random_theme,true); assert.notEqual(state.settings.theme,first);
+  await query("update vk_private.rooms set phase='finished' where code=$1",[code]);
+  await assert.rejects(() => call(host,"vk_update_lobby",[code,state.seq,JSON.stringify({})]),/oyun başlamadan/);
+});
