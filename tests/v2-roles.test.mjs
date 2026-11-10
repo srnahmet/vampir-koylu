@@ -39,7 +39,7 @@ test('V2 complete character rules and private abilities', async t => {
   assert.equal(ps.filter(p=>p.role==='vampire').length,2);
   const s=await state(g);assert.ok(s.players.every(p=>p.role===null));assert.equal(s.me,null);
  });
- await t.test('insufficient player count cannot silently drop guaranteed roles',async()=>{await assert.rejects(()=>make(null,{doctor:'always',jester:'always',mayor:'always',bodyguard:'always'},4),/yeterli oyuncu/);});
+ await t.test('oversubscribed guaranteed roles use the documented hidden lottery',async()=>{const g=await make(null,{doctor:'always',jester:'always',mayor:'always',bodyguard:'always'},4);assert.equal((await state(g)).phase,'dealing');});
  await t.test('bodyguard sacrifices only after doctor protection and recap is private',async()=>{
   const g=await make(['vampire','bodyguard','doctor']);await force(g);await act(g,0,'kill',3);await expire(g);
   await act(g,2,'protect',4);await expire(g);assert.equal((await state(g,1)).night_action,'guard');

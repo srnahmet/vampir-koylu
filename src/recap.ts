@@ -24,7 +24,7 @@ export function recapLine(action: RoundAction, players: Player[]) {
     const p = players.find(p => p.id === id);
     return p ? `#${p.number} ${p.name}` : "Masadan ayrılan oyuncu";
   };
-  const actor = name(action.actor), target = name(action.target);
+  const actor = action.actor === null && action.details.automatic ? "Otomatik gece seçimi" : name(action.actor), target = name(action.target);
   const cancelled = action.status === "cancelled" ? " Oyuncu ayrıldığı için bu hamle geçersiz kaldı." : "";
   if (action.kind === "vote_result") {
     return action.status === "tie"

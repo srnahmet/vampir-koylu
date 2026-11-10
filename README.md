@@ -1,6 +1,6 @@
 # Vampir Köylü — V2
 
-V2; on oynanabilir karakter, iki vampir, düzenlenebilir lobi, kişi başı konuşma süresi, karakter galerisi ve yedi tema içerir. **Üretim geçişinde önce [supabase/v2.sql](supabase/v2.sql), ardından web sürümü yayımlanmalıdır.** Tüm yeni kurallar ve geçiş adımları: [V2 rehberi](V2_MASA_VE_KONUSMA.md).
+V2.0.1; on oynanabilir karakter, iki vampir, düzenlenebilir lobi, kişi başı konuşma süresi, karakter galerisi ve yedi tema içerir. **Üretim geçişinde önce [supabase/v2.sql](supabase/v2.sql), ardından web sürümü yayımlanmalıdır.** Fazla rol seçildiğinde gizli, eşit öncelikli rol çekilişi yapılır; hangi rollerin dağıtıldığı açıklanmaz. Test kapsamı: [V2 test raporu](V2_TEST_RAPORU.md). Mevcut V2 kurulumu için önce [rol denetimi geçişi](supabase/v2-role-audit.sql) uygulanır. Tüm yeni kurallar ve geçiş adımları: [V2 rehberi](V2_MASA_VE_KONUSMA.md).
 
 Moderatörsüz, aynı masada herkesin kendi telefonundan oynadığı Türkçe parti oyunu. Piksel köyü, yumuşak gündüz/gece geçişleri, yedi renk paketi, QR kodla katılım ve gizli roller.
 

@@ -1117,7 +1117,7 @@ export default function App() {
                                   : "Hayatta olan başka bir oyuncuyu seç. Kimliğin gizli kalacak."
                               : "Gece devam ediyor. Seçimler tamamlandığında güneş doğacak."}
                           </p>
-                          {game.my_turn && game.night_action === "kill" && game.settings.two_vampires && game.vampire_team && <div className="vampire-team-panel"><strong>Vampir takımının hedefleri</strong>{game.vampire_team.map(v => { const player = game.players.find(p => p.id === v.id); const target = game.players.find(p => p.id === v.target); return <p key={v.id}>{v.id === game.me?.id ? "Sen" : `#${player?.number} ${player?.name}`} → {target ? `#${target.number} ${target.name}` : "Henüz seçim yapmadı"}</p>; })}<small>Süre dolana kadar seçimini değiştirebilirsin. Farklı seçimlerde önerilen iki hedeften biri rastgele seçilir.</small></div>}
+                          {game.my_turn && game.night_action === "kill" && game.settings.two_vampires && game.vampire_team && <div className="vampire-team-panel"><strong>Vampir takımının hedefleri</strong>{game.vampire_team.map(v => { const player = game.players.find(p => p.id === v.id); const target = game.players.find(p => p.id === v.target); return <p key={v.id}>{v.id === game.me?.id ? "Sen" : `#${player?.number} ${player?.name}`} → {target ? `#${target.number} ${target.name}` : "Henüz seçim yapmadı"}</p>; })}<small>Süre dolana kadar seçimini değiştirebilirsin. Farklı önerilerden biri rastgele seçilir. Eksik seçimde mevcut öneri, hiç öneri yoksa uygun hedeflerden biri seçilir.</small></div>}
                           {game.my_turn && ["guard", "silence"].includes(game.night_action || "") ? <RoleEffect kind={game.night_action === "guard" ? "bodyguard" : "silence"} small /> : <EventScene kind="night" small />}
                           {game.my_turn && game.attack_number === 2 && <div className="rule-box"><RoleEffect kind="vampire_cub" small />Yavru Vampir’in mirası: ikinci saldırı için farklı bir hedef seç.</div>}
                           {Date.now() + offset > Date.parse(game.ends_at) && (
@@ -1191,7 +1191,7 @@ export default function App() {
                         <br />Herkes oy verir; yalnızca bu adaylar seçilebilir. Yeniden eşitlik olursa sadece yeni birinciler kalır.
                         {game.phase === "voting" && game.me?.alive && game.can_vote === false && <p>Tek aday sensin. Kendine oy veremediğin için bu oylamaya katılmıyorsun; diğer oyuncuların oyları bekleniyor.</p>}
                       </div>}
-                      {game.vampire_decision && <div className="vampire-decision" role="status"><Sparkles size={22} /><div><strong>{game.vampire_decision.random ? "Kader hedefi seçti" : "Hedef belirlendi"}</strong><p>{(() => { const p = game.players.find(x => x.id === game.vampire_decision?.target); return p ? `#${p.number} ${p.name}` : "Hedef belirlendi"; })()}</p><small>Bu hedefin korunup korunmadığı gece sonunda belli olur.</small></div></div>}
+                      {game.vampire_decision && <div className="vampire-decision" role="status"><Sparkles size={22} /><div><strong>{game.vampire_decision.automatic ? "Süre doldu: hedef belirlendi" : game.vampire_decision.random ? "Kader hedefi seçti" : "Hedef belirlendi"}</strong><p>{(() => { const p = game.players.find(x => x.id === game.vampire_decision?.target); return p ? `#${p.number} ${p.name}` : "Hedef belirlendi"; })()}</p><small>Bu hedefin korunup korunmadığı gece sonunda belli olur.</small></div></div>}
                       {canShoot && <button className="button secondary full" onClick={() => { setUsingShot(!usingShot); setSelected(null); }}>{usingShot ? "Atıştan vazgeç" : "Tek atış yeteneğini kullan"}</button>}
                       {canChoose && (
                         <div className="target-area">
@@ -1441,7 +1441,7 @@ export default function App() {
                 />
               ))}
               <p className="small muted">
-                Kesin roller önce dağıtılır; yer kalan masada şansa bırakılan roller %50 ihtimalle gelir. Rastgele gece rollerinin aşamaları rol gelmese de beklenir.
+                Seçilen roller oyuncu sayısını aşarsa oyun yine başlar: sığmayan kesin roller arasından rastgele seçim yapılır. Hangi karakterlerin oyunda olduğu açıklanmaz; herkes yalnızca kendi rolünü öğrenir. Vampir sayısı korunur. Şansa bırakılan roller, kalan yerler için %50 ihtimalle havuza girer.
               </p>
             </div>
             {panel === "create" && <div className="form-section room-security">
