@@ -22,6 +22,11 @@ export function KickButton({ game, player, busy, onKick }: { game: Game; player:
 }
 
 export function eliminationText(reason?: string) {
+  if (reason === "bodyguard") return "Koruduğun oyuncunun yerine elendin.";
+  if (reason === "hunter") return "Avcının son oku seni oyun dışı bıraktı.";
+  if (reason === "gunslinger") return "Silahşörün atışıyla elendin.";
+  if (reason === "guilt") return "Yanlış atışın bedeliyle elendin.";
+  if (reason === "silence") return "Sessizlik kuralını ihlal ettiğin için elendin.";
   if (reason === "vampire") return "Vampir tarafından öldürüldün.";
   if (reason === "disconnected") return "Bağlantı bekleme süren dolduğu için bu turdan elendin.";
   if (reason === "kicked") return "Masadan çıkarıldın.";

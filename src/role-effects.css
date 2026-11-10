@@ -1,0 +1,24 @@
+.role-effect { position:relative; display:grid; place-items:center; min-height:190px; overflow:hidden; isolation:isolate; border:2px solid var(--line); border-radius:18px; background:radial-gradient(ellipse at center,var(--surface),var(--soft)); margin:12px 0 20px; }
+.role-effect .sprite { width:90px; height:110px; z-index:2; animation:role-float 3s ease-in-out infinite; }
+.effect-caption { align-self:end; padding:10px; letter-spacing:2px; font-size:11px; font-weight:900; z-index:3; color:var(--accent-dark); }
+.effect-symbol { position:absolute; font-size:125px; color:var(--purple); opacity:.22; transform:translateX(60px) rotate(-12deg); }
+.effect-orbit { position:absolute; inset:10px; display:grid; place-items:center; }
+.effect-orbit i { position:absolute; width:140px; height:140px; border:2px dashed var(--accent); border-radius:50%; opacity:.3; animation:role-orbit 15s linear infinite; }
+.effect-orbit i:nth-child(2) { width:190px; height:190px; animation-direction:reverse; }
+.effect-orbit i:nth-child(3) { width:250px; height:250px; }
+.effect-bodyguard .effect-symbol { transform:translateX(42px); opacity:.4; }
+.effect-hunter .effect-symbol { animation:role-arrow 3s ease-in-out infinite; }
+.effect-gunslinger .effect-symbol { animation:role-glint 3s ease-in-out infinite; }
+.effect-guilt { filter:saturate(.55); }
+.role-effect.small { min-height:120px; margin:8px 0; }
+.role-effect.small .sprite { width:50px; height:65px; }
+.role-effect.small .effect-caption { font-size:9px; padding:5px; }
+.role-event-notice { padding:12px; background:var(--soft); border-radius:14px; margin-bottom:16px; }
+.role-event-notice p { margin:6px 0; }
+.silence-notice { border:2px solid var(--purple); border-radius:14px; padding:12px; margin-bottom:12px; }
+.silence-notice strong { font-size:13px; }
+@keyframes role-float { 50% { transform:translateY(-4px); } }
+@keyframes role-orbit { to { transform:rotate(360deg); } }
+@keyframes role-arrow { 50% { transform:translate(80px,-12px) rotate(-20deg); } }
+@keyframes role-glint { 50% { opacity:.55; transform:translateX(60px) scale(1.15); } }
+@media (prefers-reduced-motion:reduce) { .role-effect *, .role-effect .sprite { animation:none; } }

@@ -41,7 +41,7 @@ export function SpeechPanel({
             </div>
           </div>
           <p>
-            Kalan süre boyunca herkes serbestçe konuşabilir. Şüpheleri masaya
+            Şimdi ayarlanan serbest sohbet süresi başlıyor. Susturulmamış herkes konuşabilir. Şüpheleri masaya
             dökün.
           </p>
         </>

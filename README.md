@@ -1,6 +1,8 @@
-# Vampir Köylü
+# Vampir Köylü — V2
 
-Moderatörsüz, aynı masada herkesin kendi telefonundan oynadığı Türkçe parti oyunu. Piksel köyü, yumuşak gündüz/gece geçişleri, dört renk paketi, QR kodla katılım ve gizli roller.
+V2; on oynanabilir karakter, iki vampir, düzenlenebilir lobi, kişi başı konuşma süresi, karakter galerisi ve yedi tema içerir. **Üretim geçişinde önce [supabase/v2.sql](supabase/v2.sql), ardından web sürümü yayımlanmalıdır.** Tüm yeni kurallar ve geçiş adımları: [V2 rehberi](V2_MASA_VE_KONUSMA.md).
+
+Moderatörsüz, aynı masada herkesin kendi telefonundan oynadığı Türkçe parti oyunu. Piksel köyü, yumuşak gündüz/gece geçişleri, yedi renk paketi, QR kodla katılım ve gizli roller.
 
 GISM 🤝 SPTLS ortak yapımı.
 
@@ -10,9 +12,9 @@ Her tarayıcı kimliği son 60 dakikada en fazla **10 masa** kurabilir. Ana men�
 
 Doktor ve **Soytarı** için üç seçenek vardır: **Kesin olsun**, **Şansa bırak**, **Olmasın**. Şansa bırakılan her rol için oyun başlatılırken sunucuda bağımsız %50 çekiliş yapılır; iki rol de gelebilir, sadece biri gelebilir veya hiçbiri gelmeyebilir. Kurucu dahil kimse çekiliş sonucunu öğrenmez; herkes yalnızca kendi rolünü görür. Ayarlarda çekilişin sonucu yerine seçilen mod görünür. Doktor şansa bırakılmışsa doktor çıkmasa veya elenmiş olsa da gece ikinci asgari süreyi bekler; hiç doktor yokken hamle bekleyip kilitlenmez. Eski boolean rol ayarları desteklenir.
 
-Muhtar, Koruma, Avcı, Şaman, Silahşör ve Yavru Vampir ana menüde kendilerine özel SVG piksel karakterleriyle **Yakında** olarak görünür. Bu altı rol seçilemez ve oyunda dağıtılmaz; özellikleri henüz oyuna eklenmemiştir.
+Muhtar, Koruma, Avcı, Şaman, Silahşör ve Yavru Vampir V2’de oynanabilir. Masa ayarlarında her biri kesin, rastgele veya kapalı seçilebilir.
 
-Kartların **Özellikler** bölümündeki tanıtımlar: Muhtarın oyu iki sayılır ve oylama eşit biterse idam edilecek kişiyi seçer; Koruma saldırıya uğrayan hedefinin yerine ölür; Avcı ölürken seçtiği bir oyuncuyu yanında götürür; Şaman her gece bir köylüyü susturur, hedefi ertesi gün tartışmada konuşamaz ama oy verebilir ve konuşursa elenir; Silahşör bir kez seçtiği bir oyuncuyu vurabilir, bir köylüyü vurursa ertesi gün vicdan azabıyla kendi canına kıyar; Yavru Vampir idam edilirse vampir ertesi gece iki kişiye saldırabilir, vampir ölürse yavru onun avlanma yeteneğini devralır. Bunlar kullanıcı tarafından onaylanan gelecek rol taslaklarıdır; şu anki oyun motorunda etkin değillerdir.
+Karakterlerin yetenekleri, kazanma koşulları ve taktikleri **Karakterler** galerisinde ve **Rolüm** penceresinde bulunur. Ayrıntılı etkileşimler için V2 rehberine bakın.
 
 Vampirin öldürdüğü oyuncu, ölüm kesinleştikten sonra yalnızca kendi ekranında piksel vampir dişleri ve hafif kan izleriyle kısa bir sahne görür. Doktorun kurtardığı oyuncuya, diğer oyunculara veya izleyici kurucuya bu sahne gösterilmez. Sahne kapatılabilir veya 8 saniye sonra kendiliğinden kapanır; aynı tarayıcı sekmesinde onaylandıktan sonra tekrar gösterilmez. Azaltılmış hareket tercihi animasyonları durdurur.
 
@@ -22,13 +24,13 @@ Masa kurarken **Ben de oynayacağım** veya **Yalnızca masayı yönet** seçili
 
 İlk konuşmada **Geceye geçelim**, sonraki gündüz ve ek tartışmada **Oylamaya geçelim** düğmesi bulunur. İstekler geri sayımın hemen altında görünür; yaşayanların salt çoğunluğu oluşunca geçilir. İzleyici kurucu bu isteklere oy veremez. Gece ve oylama asgari süreleri atlanamaz.
 
-**Sıra bazlı konuşma** açıldığında her gündüz yaşayan oyuncular için yeni bir rastgele sıra oluşturulur. Aynı sıra iki tur döner. Toplam gündüz süresinin yaklaşık üçte ikisi bu iki tura eşit bölünür; kalan süre serbest tartışmadır. Konuşmacı **Sözümü bitirdim** ile erken geçebilir, süre dolunca otomatik geçilir. İki tur tamamlanınca **Şimdi söz hepinizde!** görünür. Konuşma sırası veritabanında tutulur; bütün ekranlar aynı konuşmacıyı görür. Konuşma turları gündüz saatini veya erken geçiş oylarını sıfırlamaz. Kalabalık masalarda gündüz süresini uzatabilirsiniz.
+**Sıra bazlı konuşma** iki tur sürer. Her oyuncunun her turdaki süresi 30–300 saniye olarak ayrı ayarlanır. İki tur tamamlandıktan sonra tam serbest sohbet süresi başlar. Konuşmacı erken bitirebilir, yaşayanların çoğunluğu erken aşama geçişi isteyebilir. Susturulmuş oyuncu sıraya girmez.
 
 Gece, oylama, ölüm, idam, doktor kurtarışı, rol dağıtımı ve üç kazanma durumu için ayrı SVG piksel sahneleri ve CSS animasyonları vardır. Ölen veya konuşan kişinin özel rolü görselden açığa çıkmaz; nötr köy sakini çizimleri kullanılır. Azaltılmış hareket tercihi animasyonları durdurur.
 
 ## Ateş başı hikâyeleri
 
-Masa kurulduktan sonra, oyuncular toplanırken **30 kısa hikâye ve oyun ipucu** piksel karakterleriyle gösterilir. Mevcut dört rolün yanında gelecekteki altı karakteri ve aralarındaki küçük köy hikâyelerini kapsar. Gelecek rollerle ilgili kartlarda **Yakında · Yeni roller** etiketi bulunur; bu kartlar masada o rolün bulunduğu anlamına gelmez.
+Masa kurulduktan sonra, oyuncular toplanırken **30 kısa hikâye ve oyun ipucu** piksel karakterleriyle gösterilir. On karakterin köy hikâyelerini kapsar. İpuçları masadaki gizli rol dağılımını açıklamaz.
 
 Kartlar her oyuncu için **15 saniyede bir rastgele** seçilir; aynı hikâye art arda gelmez. Hikâyenin sıra numarası ve toplam hikâye sayısı gösterilmez. Akış kendiliğinden ilerler; ileri/geri veya duraklatma kontrolü yoktur. Hikâyeler gizli rollerden veya oyuncu kimliklerinden etkilenmez. Oyun başlayınca hikâye alanı ve zamanlayıcısı kaldırılır. Ek sunucu sorgusu, medya indirmesi veya otomatik hikâye sesi yoktur.
 
@@ -84,13 +86,13 @@ Settings → Pages → Source: **GitHub Actions**. `main` dalına gönderilen he
 - Oylama en az belirlenen süre kadar sürer; ayrıca yaşayan herkesin oy vermesi beklenir. En yüksek oy birden fazla kişide eşitse ek tartışma başlar, ardından **yalnızca birincilikte eşit kalan adaylarla** boş oylarla yeni tur açılır. Her yaşayan oyuncu yeniden oy verir; yeniden eşitlikte aday listesi yine daralır. Örneğin 2–1–1–1 sonucunda lider idam edilir; 2–2–1 sonucunda yalnızca iki lider tekrar oylanır. Ayrılmalar sonrası tek aday kalırsa kendine oy veremediği için yalnızca o aday oy kullanmaz; diğer herkes ve asgari süre yine beklenir. Tüm adaylar ayrılırsa yaşayanlar yeniden aday olabilir.
 - Vampir hedefini seçer. Varsa yaşayan doktor, hedefi bilmeden sonrasında koruma seçer. Ölüm ancak iki aşama tamamlanınca uygulanır. Doktor hedef olmuş olsa bile o gece hamle yapar.
 - Her gece hamlesi en az belirlenen süre kadar sürer ve seçim yapılmadan tamamlanmaz. Doktor kendini tüm oyunda bir kez, başkalarını tekrar tekrar koruyabilir.
-- Vampir idam edilirse köylüler ve doktor, elenmiş olsalar da kazanır.
+- Vampir takımının tüm üyeleri elenirse köy takımı, elenmiş üyeleri dahil kazanır.
 - Soytarı idam edilirse yalnızca soytarı kazanır ve oyun anında biter. Gece öldürülürse kaybeder.
 - Vampir hayattayken 3 veya daha az yaşayan oyuncuyla gece başlayacaksa kazanır. Gece 4 kişiden 3 kişiye düşülmesi gündüzün oynanmasına engel olmaz.
 - Ölüm sonrası roller gizli kalır, oyun sonunda tüm roller açılır.
 - Bağlantısı kopan kişi varsayılan 60 saniye içinde aynı tarayıcıyla dönerse rolüyle devam eder. Süre dolarsa o turdan elenir; geç dönerse yalnızca izler. Vampir bu şekilde elenirse köy kazanır; Soytarı yalnızca idamla kazanır. Çoğunluk yaşayanlara göre hesaplanır; ayrılanın oyları ve ona verilen oylar kaldırılır, hedefi düşenler yeniden seçer. Geceye 3 kişiyle girme kuralına ek olarak, bağlantı/çıkarma nedeniyle vampirle toplam 2 kişi kalırsa oyun vampirin zaferiyle biter.
 
-Süreler masa kurulurken ayarlanır: gündüz 30–1800 sn (varsayılan 300), her gece hamlesi 15–120 sn (15), oylama 20–120 sn (20), ek tartışma 15–300 sn (60), bağlantı bekleme 30–600 sn (60). Oyun içi sonuç duyuruları 7 sn sürer. Çok vampirli mod, "Yakında" bilgisiyle kapalıdır.
+Süreler masa kurulurken ayarlanır: gündüz 30–1800 sn (varsayılan 300), her gece hamlesi 15–120 sn (15), oylama 20–120 sn (20), ek tartışma 15–300 sn (60), bağlantı bekleme 30–600 sn (60). Oyun içi sonuç duyuruları 7 sn sürer. İki vampirli mod V2’de açıktır; en az altı oyuncu gerekir.
 
 **v4 → v5 güncellemesi:** Supabase SQL Editor'de [host-summary-runoff.sql](supabase/host-summary-runoff.sql) çalıştırılır. Yeni kurulumda veya tüm kurulumu yenilemek için [setup.sql](supabase/setup.sql) kullanılabilir; ikisi de açık masaları, rolleri, oyları ve şifreleri korur. Güncelleme sırasında açık tekrar oylamaları da eşit adaylarını korur. Önce veritabanı, ardından ön yüz yayımlanır. `vote-plurality.sql` önceki v4 güncellemesinin tarihsel dosyasıdır; v5 üzerine uygulanmamalıdır.
 

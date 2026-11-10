@@ -1,4 +1,4 @@
-import type { Game } from "../game";
+import type { Game } from "../domain";
 
 export function voiceEnabled(game: Game | null): game is Game {
   return (
@@ -18,7 +18,7 @@ export function voiceWindow(
   if (
     !voiceEnabled(game) ||
     !playerId ||
-    !game.players.some((p) => p.id === playerId && p.alive)
+    !game.players.some((p) => p.id === playerId && p.alive && !p.silenced)
   )
     return null;
   const ends = Date.parse(game.ends_at);

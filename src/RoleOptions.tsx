@@ -1,6 +1,6 @@
 import { Check, Shuffle, X } from "lucide-react";
 import { Sprite } from "./art";
-import { roleModeLabels, roles, type RoleMode } from "./game";
+import { roleModeLabels, roles, type Role, type RoleMode } from "./game";
 
 const choices = ["always", "random", "never"] as const;
 export function RoleOptions({
@@ -8,7 +8,7 @@ export function RoleOptions({
   value,
   onChange,
 }: {
-  role: "doctor" | "jester";
+  role: Exclude<Role, "villager" | "vampire">;
   value: RoleMode;
   onChange: (value: RoleMode) => void;
 }) {
@@ -22,7 +22,7 @@ export function RoleOptions({
           <span>
             {role === "doctor"
               ? "Her gece bir kişiyi korur."
-              : "İdam edilirse tek başına kazanır."}
+              : role === "jester" ? "İdam edilirse tek başına kazanır." : roles[role].tag}
           </span>
         </div>
       </div>
@@ -49,7 +49,7 @@ export function RoleOptions({
       </div>
       <p>
         {value === "random"
-          ? "%50 ihtimalle gelir. Çekiliş sonucu oyun bitene kadar gizli."
+          ? "%50 ihtimalle gelir; kesin rollerden sonra yer varsa dağıtılır. Çekiliş gizlidir."
           : value === "always"
             ? "Bu masada tam bir kişiye bu rol verilir."
             : "Bu masada bu rol dağıtılmaz."}
