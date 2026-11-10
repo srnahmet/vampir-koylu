@@ -41,7 +41,6 @@ import {
   defaults,
   friendlyError,
   roles,
-  roleModeLabels,
   rpc,
   session,
   themes,
@@ -63,6 +62,7 @@ import { useVoice } from "./voice/useVoice";
 import { VoicePanel, VoiceBadge } from "./voice/VoicePanel";
 import { useGameSounds } from "./sound/useGameSounds";
 import { LobbyStories } from "./LobbyStories";
+import { LobbyRoleSettings } from "./LobbyRoleSettings";
 import { LobbyReadiness, RematchControls } from "./LobbyReadiness";
 import { ConnectionStatus, KickButton, eliminationText } from "./RoomManagement";
 import { HostManagement } from "./HostManagement";
@@ -932,13 +932,8 @@ export default function App() {
                         {game.settings.night_seconds} sn gece
                       </span>
                       {game.settings.two_vampires && <span>İki vampir · en az 6 oyuncu</span>}
-                      <span>
-                        Doktor: {roleModeLabels[game.settings.doctor]}
-                      </span>
-                      <span>
-                        Soytarı: {roleModeLabels[game.settings.jester]}
-                      </span>
                     </div>
+                    <LobbyRoleSettings settings={game.settings} />
                     <div className="lobby-edit-actions">
                       {game.me && <button className="button secondary" onClick={() => { setName(game.me?.name || ""); open("rename"); }}>İsmimi değiştir</button>}
                       {game.is_host && <button className="button secondary" onClick={() => { setCfg({ ...defaults, ...game.settings }); open("settings"); }}><Palette size={16} /> Masa ayarları</button>}
