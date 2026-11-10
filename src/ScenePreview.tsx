@@ -5,6 +5,8 @@ import { VampireAttack } from "./VampireAttack";
 import { RoleEffect } from "./RoleEffect";
 import { Sprite } from "./art";
 import { SoundPreview } from "./sound/SoundPreview";
+import { LobbyRoleSettings } from "./LobbyRoleSettings";
+import { defaults } from "./domain";
 import { LobbyStories } from "./LobbyStories";
 export default function ScenePreview() {
   const [attack, setAttack] = useState<string | null>(null);
@@ -13,6 +15,7 @@ export default function ScenePreview() {
       <VampireAttack eventKey={attack} />
       <h1>Köyden küçük hikâyeler</h1>
       <p>GISM 🤝 SPTLS · Piksel sahneleri</p>
+      <section className="paper-card" style={{ padding:24, marginBottom:24 }}><h2>Masadaki karakter ayarları</h2><LobbyRoleSettings settings={{ ...defaults, two_vampires:true, doctor:"always", jester:"random", mayor:"never", bodyguard:"always", hunter:"random", shaman:"never", gunslinger:"random", vampire_cub:"always" }} /></section>
       <LobbyStories />
       <SoundPreview />
       <section className="paper-card" style={{ padding: 24, marginBottom: 24 }}>

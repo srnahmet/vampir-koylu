@@ -1,0 +1,24 @@
+.lobby-role-settings { margin:0 0 18px; padding:14px; background:var(--soft); border:1px solid var(--line); border-radius:14px; }
+.lobby-role-heading { display:flex; justify-content:space-between; flex-wrap:wrap; gap:5px 12px; align-items:center; margin-bottom:12px; }
+.lobby-role-heading strong { font-size:12px; }
+.lobby-role-heading small { font-size:10px; color:var(--muted); }
+.lobby-role-icons { display:grid; grid-template-columns:repeat(auto-fit,minmax(47px,1fr)); gap:8px; }
+.lobby-role-icon { position:relative; display:grid; place-items:center; height:65px; min-width:44px; padding:5px 4px 9px; border:1px solid var(--line); border-radius:11px; background:var(--surface); cursor:pointer; }
+.lobby-role-icon:hover, .lobby-role-icon.selected { border-color:var(--accent-dark); box-shadow:0 0 0 1px var(--accent-dark); }
+.lobby-role-model { display:grid; place-items:center; width:38px; height:46px; }
+.lobby-role-model .sprite { width:36px; height:45px; }
+.lobby-role-icon.never .lobby-role-model { opacity:.55; }
+.lobby-role-mark { position:absolute; right:2px; bottom:2px; width:21px; height:21px; display:grid; place-items:center; border:2px solid var(--surface); border-radius:50%; background:#e5f0e2; color:#315c39; }
+.lobby-role-icon.never .lobby-role-mark { background:#f6e6e3; color:#9b4e47; }
+.lobby-role-icon.random .lobby-role-mark { background:#eee6f6; color:#715298; }
+.lobby-vampire-count { position:absolute; top:3px; left:4px; display:grid; place-items:center; width:17px; height:17px; border-radius:6px; font-size:10px; font-weight:900; background:var(--soft); color:var(--ink); }
+.lobby-role-detail { display:flex; align-items:flex-start; gap:8px; padding:12px; margin-top:12px; background:var(--surface); border:1px solid var(--accent); border-radius:10px; }
+.lobby-role-detail > div { flex:1; min-width:0; }
+.lobby-role-detail strong { display:block; font-size:13px; }
+.lobby-role-detail span { display:block; font-size:10px; font-weight:800; color:var(--accent-dark); margin:3px 0; }
+.lobby-role-detail p { margin:0; font-size:12px; line-height:1.55; }
+.lobby-role-detail .icon-button { min-width:32px; min-height:32px; padding:7px; margin:-5px -5px 0 0; }
+.lobby-role-legend { display:flex; flex-wrap:wrap; gap:6px 12px; margin:12px 0 5px; color:var(--muted); font-size:9px; line-height:1.5; }
+.lobby-role-legend span { display:inline-flex; align-items:center; gap:3px; }
+.lobby-role-note { color:var(--muted); font-size:10px; line-height:1.5; margin:0; }
+@media (max-width:400px) { .lobby-role-settings { padding:11px; } .lobby-role-icons { gap:6px; } }
