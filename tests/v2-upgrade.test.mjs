@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
+import {gameHarness} from './helpers/game-harness.mjs';
 
 test('V1 to V2 upgrade preserves an active night and can be applied twice',async t=>{
  const db=new PGlite();t.after(()=>db.close());
@@ -29,4 +30,19 @@ test('V1 to V2 upgrade preserves an active night and can be applied twice',async
  const players=await q('select * from vk_private.players where room_id=$1 order by number',[room.id]);
  for(const [i,p] of before.entries())for(const k of Object.keys(p))assert.deepEqual(players[i][k],p[k],k);
  const state=await rpc(host,'vk_state',[code]);assert.equal(state.phase,'night');assert.equal(state.seq,10);assert.equal(state.me,null);assert.equal(state.summary,null);assert.ok(state.players.every(p=>p.role===null));
+});
+
+test('V2 role-audit upgrade preserves active choices and its functions match the full install',async t=>{
+ const h=await gameHarness();t.after(()=>h.db.close());
+ const g=await h.make(['vampire','vampire','doctor','hunter','shaman','villager'],{two_vampires:true});
+ await h.force(g);await h.action(g,0,'kill',5);
+ const before=await h.room(g),players=await h.players(g);
+ const choices=await h.q('select * from vk_private.vampire_choices where room_id=$1',[g.rid]);
+ const audit=await readFile(new URL('../supabase/v2-role-audit.sql',import.meta.url),'utf8');
+ const setup=await readFile(new URL('../supabase/setup.sql',import.meta.url),'utf8');
+ const definitions=[...audit.matchAll(/create or replace function [\s\S]*?\$\$;/g)];assert.equal(definitions.length,6);
+ for(const m of definitions)assert.ok(setup.includes(m[0]),m[0].split('\n')[0]);
+ await h.db.exec(audit);await h.db.exec(audit);
+ assert.deepEqual(await h.room(g),before);assert.deepEqual(await h.players(g),players);
+ assert.deepEqual(await h.q('select * from vk_private.vampire_choices where room_id=$1',[g.rid]),choices);
 });

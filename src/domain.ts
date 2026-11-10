@@ -166,7 +166,7 @@ export type Game = {
   night_action?: "kill" | "protect" | "guard" | "silence" | null;
   attack_number?: number;
   excluded_targets?: string[];
-  vampire_decision?: { target: string; random: boolean } | null;
+  vampire_decision?: { target: string; random: boolean; automatic?: boolean } | null;
   vampire_team?: { id: string; target: string | null }[] | null;
   my_turn: boolean;
   has_chosen: boolean;
@@ -206,7 +206,7 @@ export const roles: Record<
   }
 > = {
   mayor: { name: "Muhtar", tag: "SON SÖZÜN AĞIRLIĞI", description: "Verdiğin oy iki oy sayılır. En yüksek oy eşitse yaşayan muhtar, eşit adaylardan birini seçerek idamı belirler. Kendini de seçebilirsin. 30 saniyede karar vermezsen ek tartışma ve tekrar oylaması yapılır.", win: "Vampir takımının tüm üyeleri elenirse köyle birlikte kazanırsın.", lose: "Vampir takımı veya soytarı kazanırsa kaybedersin.", color: "#577f8d" },
-  bodyguard: { name: "Koruma", tag: "KALKANIN BİR SÖZ", description: "Her gece başka birini koru. Hedefin doktor tarafından kurtarılmamışsa saldırıda onun yerine ölürsün. Doktorun seni koruması bu fedakârlığı durdurmaz. Bir gecede en fazla bir saldırıyı üstlenirsin.", win: "Köy takımıyla kazanırsın; fedakârlık yapmış olman bunu değiştirmez.", lose: "Vampir takımı veya soytarı kazanırsa kaybedersin.", color: "#779897" },
+  bodyguard: { name: "Koruma", tag: "KALKANIN BİR SÖZ", description: "Her gece başka birini koru. Hedefin doktor tarafından kurtarılmamışsa saldırıda onun yerine ölürsün. Doktorun seni koruması bu fedakârlığı durdurmaz. Bir gecede en fazla bir saldırıyı üstlenirsin. O gece kendin de hedef olsan bile seçtiğin kişiyi korursun.", win: "Köy takımıyla kazanırsın; fedakârlık yapmış olman bunu değiştirmez.", lose: "Vampir takımı veya soytarı kazanırsa kaybedersin.", color: "#779897" },
   hunter: { name: "Avcı", tag: "SON BİR OK", description: "Oyun içinde öldüğünde hayatta olan bir oyuncuyu son okunla elersin. 30 saniyede hedef seçmezsen rastgele hedef belirlenir. Bağlantıdan elenme veya masadan çıkarılma son atış vermez. Son atış sonuçlanmadan takım zaferi hesaplanmaz.", win: "Vampir takımının tüm üyeleri elenirse köyle kazanırsın.", lose: "Vampir takımı veya soytarı kazanırsa kaybedersin.", color: "#7d995e" },
   shaman: { name: "Şaman", tag: "SESSİZLİĞİN FISILTISI", description: "Her gece başka bir oyuncuyu ertesi gün için sustur. Susturulan oyuncu oy kullanabilir ama konuşma sırasına girmez ve uygulama mikrofonunu açamaz. Aynı ortamda konuşursa masa sahibi ‘Konuştu’ ile sessizlik ihlalini işaretler ve oyuncu elenir. Etki bir gündür.", win: "Köy takımıyla kazanırsın.", lose: "Vampir takımı veya soytarı kazanırsa kaybedersin.", color: "#9b83b5" },
   gunslinger: { name: "Silahşör", tag: "TEK ATIŞ, TEK KARAR", description: "İlk konuşma, gündüz veya ek tartışmada oyun boyunca bir kez başka bir oyuncuyu vurabilirsin. Vurduğun kişi köy takımındaysa bir sonraki gün başında sen de elenirsin. Vampir takımını veya soytarıyı vurmak bu bedeli doğurmaz; soytarı vurularak kazanamaz.", win: "Köy takımıyla kazanırsın.", lose: "Vampir takımı veya soytarı kazanırsa kaybedersin.", color: "#a36e63" },

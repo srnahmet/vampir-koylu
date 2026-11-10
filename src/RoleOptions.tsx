@@ -49,9 +49,9 @@ export function RoleOptions({
       </div>
       <p>
         {value === "random"
-          ? "%50 ihtimalle gelir; kesin rollerden sonra yer varsa dağıtılır. Çekiliş gizlidir."
+          ? "%50 ihtimalle havuza girer. Yer yetmezse uygun roller arasından rastgele seçilir."
           : value === "always"
-            ? "Bu masada tam bir kişiye bu rol verilir."
+            ? "Yer yeterliyse bir kişiye verilir. Kesin roller sığmazsa aralarından rastgele seçilir."
             : "Bu masada bu rol dağıtılmaz."}
       </p>
     </fieldset>

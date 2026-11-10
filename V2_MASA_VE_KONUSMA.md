@@ -18,17 +18,17 @@ Geçiş masaları, oyuncuları, devam eden rollerini, oyları, şifreleri ve ge�
 | Doktor | Her gece birini korur; kendini oyun boyunca bir kez koruyabilir. |
 | Soytarı | Yalnızca idam edilerek tek başına kazanır. Atış, gece, bağlantı veya çıkarılma zafer vermez. |
 | Muhtar | Oyu iki sayılır. Eşitlikte 30 saniyede eşit adaylardan birini seçer; karar gelmezse ek tartışma/oylama yapılır. |
-| Koruma | Kendisi dışında birini korur. Doktor hedefi kurtarmadıysa yerine ölür. Bir gecede en fazla bir saldırıyı üstlenir. |
+| Koruma | Kendisi dışında birini korur. Doktor hedefi kurtarmadıysa yerine ölür. Bir gecede en fazla bir saldırıyı üstlenir; aynı gece kendisi de hedef olsa bile seçtiği kişiyi korur. |
 | Avcı | Oyun içi ölümünde son bir hedef seçer. 30 saniye sonunda rastgele yaşayan hedef seçilir. Bağlantı/çıkarılma son atış vermez. |
 | Şaman | Başka bir oyuncuyu ertesi gün susturur. Oy hakkı korunur, konuşma sırası ve mikrofon kapanır. Aynı ortamda sessizlik ihlalini masa sahibi “Konuştu” ile işaretler. Uygulama dışındaki konuşma otomatik dinlenmez. |
 | Silahşör | İlk konuşma/gündüz/ek tartışmada tek atış yapar. Köy takımını vurursa sonraki gün başında elenir; vampir veya soytarı atışı bu bedeli doğurmaz. Susturulmuşken atış yapamaz. |
 | Yavru Vampir | Vampir takımındadır. Son yetişkin elenince avlanmayı devralır. İdam edilirse sonraki gece iki farklı saldırı açar; diğer ölümler ek saldırı vermez. |
 
-Kesin roller önce dağıtılır. Oyuncu sayısı kesin roller için yetersizse oyun başlatılmaz. Rastgele roller, yer varsa bağımsız %50 çekilişle dağıtılır. Rastgele gece rollerinin boş aşaması da beklenir; seçim sürelerinden çekiliş sonucu anlaşılmaz. Özel yetenekler ve hedefler oyun bitene kadar özet bölümünde gizlidir.
+Vampir sayısı korunur. Kesin roller sığıyorsa hepsi dağıtılır; sığmıyorsa aralarından oyuncu sayısına uygun, eşit öncelikli rastgele seçim yapılır ve oyun başlar. Hangi karakterlerin seçildiği açıklanmaz. Şansa bırakılan roller bağımsız %50 çekilişle havuza girer; kalan yerler yetmiyorsa bu havuzdan da eşit öncelikli seçim yapılır. Rastgele gece rollerinin boş aşaması da beklenir; seçim sürelerinden çekiliş sonucu anlaşılmaz. Özel yetenekler ve hedefler oyun bitene kadar özet bölümünde gizlidir.
 
 ## İki vampir
 
-En az altı oyuncu gerekir. İki vampir aynı anda hedef önerir, birbirinin önerisini görür ve süre dolana kadar değiştirebilir. İkisi de hedef seçmeden gece ilerlemez. Aynı hedefte anlaşılırsa o hedef; farklı hedeflerdeyse ikisinden biri sunucuda rastgele seçilir. Seçilen hedef vampirlere gösterilir, sonra doktor ve koruma etkileri uygulanır. Vampirler takım üyelerini hedefleyemez. Bir yetişkin elendiğinde diğeriyle oyun sürer.
+En az altı oyuncu gerekir. İki vampir aynı anda hedef önerir, birbirinin önerisini görür ve süre dolana kadar değiştirebilir. Süre sonunda eksik seçim varsa geçerli öneriler kullanılır; hiç öneri yoksa yaşayan uygun hedeflerden biri rastgele seçilir. Böylece iki vampirli gece seçim yapılmadığında da ilerler. Aynı hedefte anlaşılırsa o hedef; farklı hedeflerdeyse ikisinden biri sunucuda rastgele seçilir. Seçilen hedef vampirlere gösterilir, sonra doktor ve koruma etkileri uygulanır. Vampirler takım üyelerini hedefleyemez. Bir yetişkin elendiğinde diğeriyle oyun sürer.
 
 ## Masa, konuşma ve görünüm
 
