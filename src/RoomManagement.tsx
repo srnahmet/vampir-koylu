@@ -22,6 +22,8 @@ export function KickButton({ game, player, busy, onKick }: { game: Game; player:
 }
 
 export function eliminationText(reason?: string) {
+  if (reason === "magic") return "Büyün vampir kanına dokundu; büyünün bedeliyle elendin.";
+  if (reason === "night") return "Bu gece elendin.";
   if (reason === "bodyguard") return "Koruduğun oyuncunun yerine elendin.";
   if (reason === "hunter") return "Avcının son oku seni oyun dışı bıraktı.";
   if (reason === "gunslinger") return "Silahşörün atışıyla elendin.";

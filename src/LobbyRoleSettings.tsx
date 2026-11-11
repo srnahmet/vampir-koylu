@@ -1,10 +1,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Check, HelpCircle, X } from "lucide-react";
 import { Sprite } from "./art";
-import { roles, type Role, type RoleMode, type Settings } from "./domain";
+import { roles, activeRoles, minimumPlayers, type Role, type RoleMode, type Settings } from "./domain";
 import "./lobby-role-settings.css";
 
-const order: Role[] = ["vampire", "villager", "doctor", "jester", "mayor", "bodyguard", "hunter", "shaman", "gunslinger", "vampire_cub"];
+const order: Role[] = ["vampire", ...activeRoles.filter(r => r !== "vampire")];
 
 function roleSetting(role: Role, settings: Settings) {
   if (role === "vampire") return {
@@ -30,7 +30,7 @@ function roleSetting(role: Role, settings: Settings) {
 }
 
 /** Reads configured modes only; the hidden dealt roles never enter this component. */
-export function LobbyRoleSettings({ settings }: { settings: Settings }) {
+export function LobbyRoleSettings({ settings, canEdit = false, busy = false, onChange }: { settings: Settings; canEdit?: boolean; busy?: boolean; onChange?: (role: Exclude<Role, "villager" | "vampire">, mode: RoleMode) => void }) {
   const [selected, setSelected] = useState<Role | null>(null);
   const container = useRef<HTMLDivElement>(null);
   const detailId = useId();
@@ -46,13 +46,14 @@ export function LobbyRoleSettings({ settings }: { settings: Settings }) {
   return <div className="lobby-role-settings" ref={container} onKeyDown={event => {
     if (event.key === "Escape" && selected) { event.stopPropagation(); setSelected(null); }
   }}>
-    <div className="lobby-role-heading"><strong>Karakter ayarları</strong><small>Dokun, ayrıntısını gör</small></div>
+    <div className="lobby-role-heading"><strong>Karakter ayarları</strong><small>{canEdit ? "Dokun, ayarı değiştir" : "Masa sahibinin seçimleri"}</small></div>
     <div className="lobby-role-icons" role="group" aria-label="Masanın karakter ayarları">
       {order.map(role => {
         const setting = roleSetting(role, settings);
         return <button type="button" key={role} className={`lobby-role-icon ${setting.mode} ${selected === role ? "selected" : ""}`}
           aria-label={`${roles[role].name}: ${setting.label}`} aria-expanded={selected === role}
           aria-controls={selected === role ? detailId : undefined}
+          title={`${roles[role].name}: ${setting.label}`} disabled={busy || !canEdit || role === "vampire" || role === "villager"}
           onClick={() => setSelected(selected === role ? null : role)}>
           <span aria-hidden="true" className="lobby-role-model"><Sprite role={role} /></span>
           {role === "vampire" && settings.two_vampires && <span className="lobby-vampire-count" aria-hidden="true">2</span>}
@@ -61,10 +62,16 @@ export function LobbyRoleSettings({ settings }: { settings: Settings }) {
       })}
     </div>
     {selected && detail && <div id={detailId} className="lobby-role-detail" role="status" aria-live="polite">
-      <div><strong>{roles[selected].name}</strong><span>{detail.label}</span><p>{detail.text}</p></div>
-      <button type="button" className="icon-button" aria-label="Karakter bilgisini kapat" onClick={() => setSelected(null)}><X size={15} /></button>
+      <div><strong>{roles[selected].name} {minimumPlayers(selected) > 4 && <small>· En az {minimumPlayers(selected)} oyuncu</small>}</strong>
+        <div className="lobby-role-switch" role="group" aria-label={`${roles[selected].name} ayarı`}>
+          {(["always", "random", "never"] as const).map(mode => <button type="button" key={mode} disabled={busy} aria-pressed={detail.mode === mode} onClick={() => {
+            if (selected !== "vampire" && selected !== "villager") onChange?.(selected, mode);
+          }}>{mode === "always" ? "Kesin oynasın" : mode === "random" ? "Şansa bağlı" : "Oynamasın"}</button>)}
+        </div>
+      </div>
+      <button type="button" className="icon-button" aria-label="Karakter ayarını kapat" onClick={() => setSelected(null)}><X size={15} /></button>
     </div>}
     <p className="lobby-role-legend"><span><Check size={12} /> Kesin seçildi</span><span><X size={12} /> Kapalı</span><span><HelpCircle size={12} /> Şansa / kalan yere bağlı</span></p>
-    <p className="lobby-role-note">Bunlar masa ayarlarıdır. Roller sığmazsa gizli çekiliş yapılır; hangi karakterlerin dağıtıldığı açıklanmaz.</p>
+    <p className="lobby-role-note">Bunlar masa ayarlarıdır. Roller sığmazsa gizli çekiliş yapılır; hangi karakterlerin dağıtıldığı açıklanmaz. Şansa bağlı roller %50 ihtimalle havuza girer. Büyücü ve Alfa en az 8, Sapkın en az 6 oyuncuda dağıtılır.</p>
   </div>;
 }

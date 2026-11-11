@@ -10,6 +10,10 @@
 .effect-hunter .effect-symbol { animation:role-arrow 3s ease-in-out infinite; }
 .effect-gunslinger .effect-symbol { animation:role-glint 3s ease-in-out infinite; }
 .effect-guilt { filter:saturate(.55); }
+.effect-wizard { border-color:var(--purple); background:radial-gradient(ellipse at center,var(--purple-soft),var(--surface)); }
+.effect-wizard .effect-symbol { transform:translateX(65px) rotate(12deg); }
+.effect-alpha_vampire .effect-symbol { color:#b37689; opacity:.45; }
+.effect-fanatic .effect-orbit i { border-style:solid; border-color:#b0905b; }
 .role-effect.small { min-height:120px; margin:8px 0; }
 .role-effect.small .sprite { width:50px; height:65px; }
 .role-effect.small .effect-caption { font-size:9px; padding:5px; }

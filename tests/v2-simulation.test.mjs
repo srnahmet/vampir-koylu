@@ -1,3 +1,4 @@
+// Archived V2 contract: sequential nights remain supported for rounds already running at migration.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {gameHarness,optionalRoles} from './helpers/game-harness.mjs';
@@ -8,7 +9,7 @@ function random(seed) {
 }
 
 test('Seeded full games converge through public RPCs with every role and two vampires', async t => {
-  const h=await gameHarness();t.after(()=>h.db.close());
+  const h=await gameHarness({legacy:true});t.after(()=>h.db.close());
   const phases=new Set(), abilities=new Set();let transitions=0,maxSteps=0,departures=0;
   for(let seed=1;seed<=84;seed++) {
     const rng=random(seed*7919), n=4+(seed-1)%21, two=n>=6 && seed%2===0;

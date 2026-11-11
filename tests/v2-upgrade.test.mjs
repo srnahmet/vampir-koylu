@@ -1,3 +1,4 @@
+// Archived V2 contract: sequential nights remain supported for rounds already running at migration.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
@@ -21,8 +22,8 @@ test('V1 to V2 upgrade preserves an active night and can be applied twice',async
  await rpc(vampire.user_id,'vk_act',[code,10,'kill',target.id]);
  const room=(await q('select * from vk_private.rooms where code=$1',[code]))[0];
  const before=await q('select * from vk_private.players where room_id=$1 order by number',[room.id]);
- const setup=await readFile(new URL('../supabase/setup.sql',import.meta.url),'utf8');
- const upgrade=await readFile(new URL('../supabase/v2.sql',import.meta.url),'utf8');
+ const setup=await readFile(new URL('./fixtures/setup-v2.sql',import.meta.url),'utf8');
+ const upgrade=await readFile(new URL('./fixtures/setup-v2.sql',import.meta.url),'utf8');
  assert.equal(upgrade.slice(upgrade.indexOf('-- Vampir Köylü V2.')),setup);
  await db.exec(upgrade);await db.exec(upgrade);
  const after=(await q('select * from vk_private.rooms where code=$1',[code]))[0];
@@ -33,13 +34,13 @@ test('V1 to V2 upgrade preserves an active night and can be applied twice',async
 });
 
 test('V2 role-audit upgrade preserves active choices and its functions match the full install',async t=>{
- const h=await gameHarness();t.after(()=>h.db.close());
+ const h=await gameHarness({legacy:true});t.after(()=>h.db.close());
  const g=await h.make(['vampire','vampire','doctor','hunter','shaman','villager'],{two_vampires:true});
  await h.force(g);await h.action(g,0,'kill',5);
  const before=await h.room(g),players=await h.players(g);
  const choices=await h.q('select * from vk_private.vampire_choices where room_id=$1',[g.rid]);
  const audit=await readFile(new URL('../supabase/v2-role-audit.sql',import.meta.url),'utf8');
- const setup=await readFile(new URL('../supabase/setup.sql',import.meta.url),'utf8');
+ const setup=await readFile(new URL('./fixtures/setup-v2.sql',import.meta.url),'utf8');
  const definitions=[...audit.matchAll(/create or replace function [\s\S]*?\$\$;/g)];assert.equal(definitions.length,6);
  for(const m of definitions)assert.ok(setup.includes(m[0]),m[0].split('\n')[0]);
  await h.db.exec(audit);await h.db.exec(audit);

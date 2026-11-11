@@ -3,11 +3,11 @@ import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 
 export const optionalRoles = ['doctor','jester','mayor','bodyguard','hunter','shaman','gunslinger','vampire_cub'];
-export async function gameHarness() {
+export async function gameHarness({ legacy = false } = {}) {
   const db = new PGlite();
   await db.exec(`create role anon; create role authenticated; create schema auth;
     create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;`);
-  await db.exec(await readFile(new URL('../../supabase/setup.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL(legacy ? '../fixtures/setup-v2.sql' : '../../supabase/setup.sql', import.meta.url), 'utf8'));
   const q = async (sql, args = []) => (await db.query(sql, args)).rows;
   async function rpc(uid, fn, args = []) {
     await q("select set_config('request.jwt.claim.sub',$1,false)", [uid || '']);

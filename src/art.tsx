@@ -46,6 +46,9 @@ export function Sprite({
       </svg>
     );
   const clothes = {
+    wizard: "#8563aa",
+    alpha_vampire: "#9e526c",
+    fanatic: "#a4774f",
     villager: "#d49b50",
     vampire: "#6f598e",
     doctor: "#77b39e",
@@ -66,6 +69,9 @@ export function Sprite({
         neutral
           ? "Köy sakini"
           : {
+              wizard: "Büyücü",
+              alpha_vampire: "Alfa Vampir",
+              fanatic: "Sapkın",
               villager: "Köylü",
               vampire: "Vampir",
               doctor: "Doktor",
@@ -79,7 +85,7 @@ export function Sprite({
       }
     >
       <ellipse cx="16" cy="37" rx="12" ry="2" fill="#36314a" opacity=".13" />
-      {role === "vampire" && <path d="M7 22H25L30 36H2Z" fill="#44344f" />}
+      {(role === "vampire" || role === "alpha_vampire") && <path d="M7 22H25L30 36H2Z" fill="#44344f" />}
       <path d="M8 22H24V34H8Z" fill={clothes} />
       <path d="M4 24H8V32H4M24 24H28V32H24" fill="#e9ba91" />
       <path d="M10 34H15V38H8V36H10M18 34H23V36H25V38H18" fill="#493c45" />
@@ -87,7 +93,7 @@ export function Sprite({
       <path
         d="M6 7H9V4H23V7H26V14H23V10H20V13H12V10H9V15H6Z"
         fill={
-          role === "vampire"
+          (role === "vampire" || role === "alpha_vampire")
             ? "#393148"
             : role === "jester"
               ? "#794c4d"
@@ -97,12 +103,15 @@ export function Sprite({
       <path d="M11 15H13V18H11M20 15H22V18H20" fill="#3f3540" />
       <path d="M14 21H19V22H14" fill="#bd7e75" />
       <path d="M8 19H11V20H8M22 19H25V20H22" fill="#df9c92" />
-      {role === "vampire" && (
+      {(role === "vampire" || role === "alpha_vampire") && (
         <>
           <path d="M13 20H15V23H13M19 20H21V23H19" fill="#fff6e2" />
           <path d="M9 25H23L16 30Z" fill="#e7d2bd" />
         </>
       )}
+      {role === "alpha_vampire" && <><path d="M6 5V0L11 3L16 0L21 3L26 0V5Z" fill="#dab36b" /><path d="M14 0H18V5H14" fill="#dd8882" /></>}
+      {role === "wizard" && <><path d="M3 10H29V13H3M7 8H25V10H7M11 4H22V8H11M14 0H20V4H14" fill="#644686" /><path d="M19 5H21V7H19M12 8H14V10H12" fill="#e8ce88" /><path d="M24 20H27V36H24" fill="#977146" /><path d="M23 15H28V22H23M21 17H30V20H21" fill="#c6b1e9" /><path d="M12 23H22V26H12L17 32Z" fill="#bba8d2" /></>}
+      {role === "fanatic" && <><path d="M5 14V7H8V3H24V7H27V14H24V10H21V8H11V10H8V14" fill="#775539" /><path d="M10 15H23V17H10" fill="#c1a178" /><path d="M2 25H12V34H2" fill="#e8d7a8" /><path d="M4 27H10V29H4M6 25H8V32H6" fill="#a7565e" /><path d="M20 25H23V31H20M18 27H25V29H18" fill="#dab66a" /></>}
       {role === "doctor" && (
         <>
           <path d="M7 4H25V10H7Z" fill="#f5f3da" />

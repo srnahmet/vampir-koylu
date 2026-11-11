@@ -1,10 +1,11 @@
+// Archived V2 contract: sequential nights remain supported for rounds already running at migration.
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {randomUUID} from "node:crypto";
 import {readFile} from "node:fs/promises";
 import {PGlite} from "@electric-sql/pglite";
 
-const setup = await readFile(new URL("../supabase/setup.sql", import.meta.url), "utf8");
+const setup = await readFile(new URL("./fixtures/setup-v2.sql", import.meta.url), "utf8");
 const migration = await readFile(new URL("../supabase/host-summary-runoff.sql", import.meta.url), "utf8");
 const legacy = await readFile(new URL("./fixtures/setup-v4.sql", import.meta.url), "utf8");
 

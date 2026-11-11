@@ -3,6 +3,9 @@ import type { Role } from "./domain";
 import "./role-effects.css";
 
 const effects: Record<string, { role: Role; symbol: string; title: string }> = {
+  wizard: { role: "wizard", symbol: "✧", title: "KADERLER YER DEĞİŞTİRDİ" },
+  alpha_vampire: { role: "alpha_vampire", symbol: "☾", title: "YENİ BİR KAN BAĞI" },
+  fanatic: { role: "fanatic", symbol: "◎", title: "TAKINTI TAMAMLANDI" },
   bodyguard: { role: "bodyguard", symbol: "⛨", title: "KALKANIN SON SÖZÜ" },
   silence: { role: "shaman", symbol: "☾", title: "SESSİZLİK BÜYÜSÜ" },
   hunter: { role: "hunter", symbol: "➶", title: "AVCININ SON OKU" },

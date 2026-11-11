@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { Sprite } from "./art";
-import { roles, type Role, type ArtworkRole } from "./game";
+import { roles, activeRoles, factionOf, factionLabels, type Role, type ArtworkRole } from "./game";
 
 export const roleTips: Record<Role, string> = {
+  wizard: "Rol değiştirmek vampirle temas ederse canına mal olur. Biriktirdiğin gündüz ipuçlarını kullan; pas geçmek de bir seçenektir.",
+  alpha_vampire: "Dönüşüm gecesi takım saldırısı durur. Takım arkadaşının önerisini ve doktorun kimi koruyabileceğini düşün.",
+  fanatic: "Hedefini gizli tut. Görevin tamamlandıktan sonra hayatta kalman kişisel zaferini değiştirmez.",
   mayor: "Çift oyun güçlüdür; eşitlikte karar vermeden önce herkesi dinle.",
   bodyguard: "Koruyacağın kişiyi seçerken kendini riske attığını unutma.",
   hunter: "Son atışın için gündüz konuşmalarındaki tutarsızlıkları aklında tut.",
@@ -16,7 +19,7 @@ export const roleTips: Record<Role, string> = {
   jester: "Şüphe çek ama niyetini çok açık etme; köyün seni oylamak istemesini sağlamalısın.",
 };
 const characters = [
-  ...(["villager", "vampire", "doctor", "jester", "mayor", "bodyguard", "hunter", "shaman", "gunslinger", "vampire_cub"] as Role[]).map(id => ({ id: id as ArtworkRole, name: roles[id].name, rules: id === "vampire" ? `${roles[id].description} İki vampirli masada iki vampir aynı anda hedef önerir; farklı hedeflerden biri süre sonunda rastgele seçilir.` : roles[id].description, win: roles[id].win, tip: roleTips[id], available: true })),
+  ...activeRoles.map(id => ({ id: id as ArtworkRole, name: roles[id].name, rules: id === "vampire" ? `${roles[id].description} Tüm gece rolleri aynı anda seçim yapar. İki vampir farklı hedefler önerirse mevcut önerilerden biri rastgele seçilir. İstersen pas geçebilirsin; hiç öneri yoksa kimseye saldırılmaz.` : roles[id].description, win: roles[id].win, tip: roleTips[id], available: true })),
 
 ];
 export function CharacterGallery() {
@@ -30,6 +33,7 @@ export function CharacterGallery() {
         <div className={`character-gallery-portrait ${character.id}`}><Sprite role={character.id} /></div>
         <span className="eyebrow">{character.available ? "OYUNDA" : "YAKINDA"} · {index + 1} / {characters.length}</span>
         <h3>{character.name}</h3>
+        <span className={`faction-badge ${factionOf(character.id)}`}>{factionLabels[factionOf(character.id)]}</span>
         <div className="character-rules"><strong>Yetenek ve kurallar</strong><p>{character.rules}</p><strong>Nasıl kazanır?</strong><p>{character.win}</p><strong><Sparkles size={15} /> Taktik</strong><p>{character.tip}</p></div>
       </article>
       <button className="icon-button gallery-arrow" aria-label="Sonraki karakter" onClick={() => step(1)}><ChevronRight size={24} /></button>

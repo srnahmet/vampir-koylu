@@ -1,3 +1,4 @@
+// Archived V2 contract: sequential nights remain supported for rounds already running at migration.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -9,7 +10,7 @@ test("Observer, early transitions, and two-round speaking", async (t) => {
   await db.exec(`create role anon;create role authenticated;create schema auth;
  create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;`);
   const setup = await readFile(
-    new URL("../supabase/setup.sql", import.meta.url),
+    new URL("./fixtures/setup-v2.sql", import.meta.url),
     "utf8",
   );
   await db.exec(setup);

@@ -1,6 +1,6 @@
 import { Check, Shuffle, X } from "lucide-react";
 import { Sprite } from "./art";
-import { roleModeLabels, roles, type Role, type RoleMode } from "./game";
+import { roleModeLabels, roles, minimumPlayers, type Role, type RoleMode } from "./game";
 
 const choices = ["always", "random", "never"] as const;
 export function RoleOptions({
@@ -48,6 +48,8 @@ export function RoleOptions({
         ))}
       </div>
       <p>
+        {minimumPlayers(role) > 4 && `En az ${minimumPlayers(role)} oyuncuda dağıtılır. `}
+        {role === "alpha_vampire" && "Mevcut bir vampirin yerini alır. "}
         {value === "random"
           ? "%50 ihtimalle havuza girer. Yer yetmezse uygun roller arasından rastgele seçilir."
           : value === "always"

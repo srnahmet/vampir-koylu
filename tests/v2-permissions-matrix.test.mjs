@@ -1,9 +1,10 @@
+// Archived V2 contract: sequential nights remain supported for rounds already running at migration.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {gameHarness} from './helpers/game-harness.mjs';
 
 test('Every role/action/phase permission is checked through the authenticated RPC boundary',async t=>{
-  const h=await gameHarness();t.after(()=>h.db.close());
+  const h=await gameHarness({legacy:true});t.after(()=>h.db.close());
   const {q,db}=h;
   const roles=['villager','vampire','doctor','jester','mayor','bodyguard','hunter','shaman','gunslinger','vampire_cub'];
   const phases=['lobby','dealing','countdown','intro','day','runoff','voting','night','night_result','execution','hunter','mayor_decision','finished'];

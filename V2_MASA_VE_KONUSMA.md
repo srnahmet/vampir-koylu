@@ -1,3 +1,5 @@
+> Bu belge önceki V2 sürümünün kaydıdır. Güncel kurallar ve doğrulama için [V2.1 rehberine](V2_1_KURALLAR_VE_TESTLER.md) bakın.
+
 # Vampir Köylü V2 — 2.0.0
 
 V2; on oynanabilir karakteri, iki vampirin ortak hedef seçimini, masa düzenleme araçlarını ve yedi temayı içerir.

@@ -1,9 +1,10 @@
+// Archived V2 contract: sequential nights remain supported for rounds already running at migration.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { gameHarness, optionalRoles } from './helpers/game-harness.mjs';
 
 test('Adversarial V2 role interactions', async t => {
-  const h = await gameHarness(); t.after(() => h.db.close());
+  const h = await gameHarness({legacy:true}); t.after(() => h.db.close());
   const { make, q, action, expire, state, force, room, players, disconnect } = h;
   await t.test('overflow starts with four players, preserves settings and hides the selected pool', async () => {
     const settings = Object.fromEntries(optionalRoles.map(k => [k, 'always']));

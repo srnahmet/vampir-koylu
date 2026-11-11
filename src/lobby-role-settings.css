@@ -21,4 +21,8 @@
 .lobby-role-legend { display:flex; flex-wrap:wrap; gap:6px 12px; margin:12px 0 5px; color:var(--muted); font-size:9px; line-height:1.5; }
 .lobby-role-legend span { display:inline-flex; align-items:center; gap:3px; }
 .lobby-role-note { color:var(--muted); font-size:10px; line-height:1.5; margin:0; }
+.lobby-role-switch { display:flex; flex-wrap:wrap; gap:4px; margin-top:8px; }
+.lobby-role-switch button { flex:1; min-height:38px; padding:7px; font-size:11px; border:1px solid var(--line); border-radius:7px; background:var(--soft); color:var(--ink); }
+.lobby-role-switch button[aria-pressed=true] { background:var(--accent-dark); border-color:var(--accent-dark); color:var(--surface); }
+.lobby-role-icon:disabled { cursor:default; opacity:1; }
 @media (max-width:400px) { .lobby-role-settings { padding:11px; } .lobby-role-icons { gap:6px; } }
