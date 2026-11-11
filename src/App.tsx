@@ -389,6 +389,7 @@ export default function App() {
   }, [code, refresh, removed]);
   useEffect(() => {
     setSelected(null); setUsingShot(false);
+    if (game?.phase === "lobby") setPanel(null);
   }, [game?.code, game?.seq]);
   useEffect(() => {
     if (selected && !game?.players.some(p => p.id === selected && p.alive)) setSelected(null);
