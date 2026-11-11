@@ -24,6 +24,11 @@
 .font-toggle { gap:5px; display:inline-flex; align-items:center; }
 .font-toggle span { font-size:10px; }
 .font-toggle[aria-pressed="true"] { background:var(--soft); color:var(--accent-dark); }
+@media (max-width:540px) {
+  .app-shell .site-header { flex-wrap:wrap; height:auto; min-height:88px; gap:8px; padding:12px 0; }
+  .site-header nav { margin-left:auto; }
+  .font-toggle span { display:none; }
+}
 .faction-badge { display:inline-flex; width:fit-content; margin:6px 0; padding:6px 12px; border:1px solid var(--accent); border-radius:30px; color:var(--accent-dark); background:var(--soft); font-size:12px; font-weight:900; }
 .faction-badge.vampire { color:#8c4965; background:#f5e7ef; border-color:#c694ae; }
 .faction-badge.independent { color:#786025; background:#f5edcf; border-color:#c9b77a; }
