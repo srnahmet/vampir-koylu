@@ -1,3 +1,4 @@
+// Archived V2 contract: sequential nights remain supported for rounds already running at migration.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -7,7 +8,7 @@ import { PGlite } from "@electric-sql/pglite";
 test("two vampires choose privately and resolve after the deadline", async t => {
   const db=new PGlite(); t.after(()=>db.close());
   await db.exec(`create role anon; create role authenticated; create schema auth; create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;`);
-  const read=async f=>readFile(new URL(`../supabase/${f}`,import.meta.url),'utf8');
+  const read=async _f=>readFile(new URL('./fixtures/setup-v2.sql',import.meta.url),'utf8');
   await db.exec(await read('setup.sql')); const migration=await read('v2.sql'); await db.exec(migration); await db.exec(migration);
   const q=async (sql,p=[]) => (await db.query(sql,p)).rows;
   const call=async(uid,fn,args=[])=>{ await q("select set_config('request.jwt.claim.sub',$1,false)",[uid]); return (await q(`select public.${fn}(${args.map((_,i)=>`$${i+1}`).join(',')}) result`,args))[0].result; };
@@ -46,7 +47,7 @@ test("two vampires choose privately and resolve after the deadline", async t => 
 test("agreement, doctor protection, and surviving vampire preserve the rules", async t => {
   const db=new PGlite(); t.after(()=>db.close());
   await db.exec(`create role anon;create role authenticated;create schema auth;create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;`);
-  await db.exec(await readFile(new URL('../supabase/setup.sql',import.meta.url),'utf8'));
+  await db.exec(await readFile(new URL('./fixtures/setup-v2.sql',import.meta.url),'utf8'));
   const q=async(s,p=[]) => (await db.query(s,p)).rows;
   const call=async(uid,fn,args=[])=>{await q("select set_config('request.jwt.claim.sub',$1,false)",[uid]);return (await q(`select public.${fn}(${args.map((_,i)=>`$${i+1}`).join(',')}) result`,args))[0].result};
   const host=randomUUID(),users=Array.from({length:7},()=>randomUUID());

@@ -1,6 +1,6 @@
-# Vampir Köylü — V2
+# Vampir Köylü — V2.1
 
-V2.0.1; on oynanabilir karakter, iki vampir, düzenlenebilir lobi, kişi başı konuşma süresi, karakter galerisi ve yedi tema içerir. **Üretim geçişinde önce [supabase/v2.sql](supabase/v2.sql), ardından web sürümü yayımlanmalıdır.** Fazla rol seçildiğinde gizli, eşit öncelikli rol çekilişi yapılır; hangi rollerin dağıtıldığı açıklanmaz. Test kapsamı: [V2 test raporu](V2_TEST_RAPORU.md). Mevcut V2 kurulumu için önce [rol denetimi geçişi](supabase/v2-role-audit.sql) uygulanır. Tüm yeni kurallar ve geçiş adımları: [V2 rehberi](V2_MASA_VE_KONUSMA.md).
+V2.1; ortak gece seçimi, iki eşitlik sınırı, okunabilir font, takım/zafer bilgisi ve üç yeni karakter içerir. **Üretimde önce [supabase/v2-1.sql](supabase/v2-1.sql), ardından web sürümü yayımlanır.** Devam eden V2 oyunları korunur; yeni dağıtımlar 2.1 kurallarını kullanır. Kurallar, denge tercihleri, gizlilik ve test kapsamı: [2.1 rehberi ve test raporu](V2_1_KURALLAR_VE_TESTLER.md).
 
 Moderatörsüz, aynı masada herkesin kendi telefonundan oynadığı Türkçe parti oyunu. Piksel köyü, yumuşak gündüz/gece geçişleri, yedi renk paketi, QR kodla katılım ve gizli roller.
 
@@ -10,9 +10,9 @@ GISM 🤝 SPTLS ortak yapımı.
 
 Her tarayıcı kimliği son 60 dakikada en fazla **10 masa** kurabilir. Ana menüde kalan hak, kullanılan haklar ve sıradaki yenilenme süresi gösterilir. Her hak kendi kullanımından 60 dakika sonra geri gelir. Sayaç sunucudan okunur; sayfa yenilemek, sekme değiştirmek veya oyun bitirmek hakları sıfırlamaz. Başka masalara katılmak hak tüketmez. Aynı kurucunun eşzamanlı oluşturma istekleri veritabanında sıraya alınır.
 
-Doktor ve **Soytarı** için üç seçenek vardır: **Kesin olsun**, **Şansa bırak**, **Olmasın**. Şansa bırakılan her rol için oyun başlatılırken sunucuda bağımsız %50 çekiliş yapılır; iki rol de gelebilir, sadece biri gelebilir veya hiçbiri gelmeyebilir. Kurucu dahil kimse çekiliş sonucunu öğrenmez; herkes yalnızca kendi rolünü görür. Ayarlarda çekilişin sonucu yerine seçilen mod görünür. Doktor şansa bırakılmışsa doktor çıkmasa veya elenmiş olsa da gece ikinci asgari süreyi bekler; hiç doktor yokken hamle bekleyip kilitlenmez. Eski boolean rol ayarları desteklenir.
+İsteğe bağlı karakterlerde **Kesin olsun**, **Şansa bırak**, **Olmasın** seçenekleri vardır. Şansa bırakılan her rol bağımsız %50 ihtimalle havuza girer. Kesin roller sığmazsa aralarından eşit öncelikle gizli seçim yapılır; kesin roller sığıyorsa korunur. Masa sahibi dahil hiç kimse gerçek rol listesini öğrenmez. Büyücü ve Alfa en az 8, Sapkın en az 6 oyuncuda dağıtılır. Alfa mevcut yetişkin vampirlerden birinin yerini alır.
 
-Muhtar, Koruma, Avcı, Şaman, Silahşör ve Yavru Vampir V2’de oynanabilir. Masa ayarlarında her biri kesin, rastgele veya kapalı seçilebilir.
+Muhtar, Avcı, Şaman, Silahşör, Yavru Vampir, Büyücü, Alfa Vampir ve Sapkın oynanabilir. Koruma yeni dağıtımlarda kapalıdır; eski oyun mekaniği ve verileri korunur.
 
 Karakterlerin yetenekleri, kazanma koşulları ve taktikleri **Karakterler** galerisinde ve **Rolüm** penceresinde bulunur. Ayrıntılı etkileşimler için V2 rehberine bakın.
 
@@ -22,7 +22,7 @@ Vampirin öldürdüğü oyuncu, ölüm kesinleştikten sonra yalnızca kendi ekr
 
 Masa kurarken **Ben de oynayacağım** veya **Yalnızca masayı yönet** seçilir. İkinci seçenekte isim istenmez; kurucuya oyuncu kaydı, numara veya rol verilmez. Masa sahibi oyunu başlatıp ortak akışı izler. Ekranında özel rol kartı, gece hedefi veya oylama sırasında gizli oy sayıları bulunmaz. Oyun bitince açıklanan roller herkes için ortaktır. Başlamak için kurucu hariç en az 4 gerçek oyuncu gerekir.
 
-İlk konuşmada **Geceye geçelim**, sonraki gündüz ve ek tartışmada **Oylamaya geçelim** düğmesi bulunur. İstekler geri sayımın hemen altında görünür; yaşayanların salt çoğunluğu oluşunca geçilir. İzleyici kurucu bu isteklere oy veremez. Gece ve oylama asgari süreleri atlanamaz.
+İlk konuşmada **Geceye geçelim**, sonraki gündüz ve ek tartışmada **Oylamaya geçelim** düğmesi bulunur. İstekler geri sayımın hemen altında görünür; yaşayanların salt çoğunluğu oluşunca geçilir. İzleyici kurucu bu isteklere oy veremez. Gece ve oylama asgari süreleri atlanamaz. Tüm gece rolleri aynı anda seçer; ana süre ve en fazla 5/10 saniye ek süre sonunda eksik hamleler pas sayılır. İkinci ardışık eşitlikte kimse idam edilmeden geceye geçilir.
 
 **Sıra bazlı konuşma** iki tur sürer. Her oyuncunun her turdaki süresi 30–300 saniye olarak ayrı ayarlanır. İki tur tamamlandıktan sonra tam serbest sohbet süresi başlar. Konuşmacı erken bitirebilir, yaşayanların çoğunluğu erken aşama geçişi isteyebilir. Susturulmuş oyuncu sıraya girmez.
 
@@ -30,7 +30,7 @@ Gece, oylama, ölüm, idam, doktor kurtarışı, rol dağıtımı ve üç kazanm
 
 ## Ateş başı hikâyeleri
 
-Masa kurulduktan sonra, oyuncular toplanırken **30 kısa hikâye ve oyun ipucu** piksel karakterleriyle gösterilir. On karakterin köy hikâyelerini kapsar. İpuçları masadaki gizli rol dağılımını açıklamaz.
+Masa kurulduktan sonra, oyuncular toplanırken **kısa hikâyeler ve oyun ipuçları** piksel karakterleriyle gösterilir. Yeni karakterlerin hikâyelerini de kapsar. İpuçları masadaki gizli rol dağılımını açıklamaz.
 
 Kartlar her oyuncu için **15 saniyede bir rastgele** seçilir; aynı hikâye art arda gelmez. Hikâyenin sıra numarası ve toplam hikâye sayısı gösterilmez. Akış kendiliğinden ilerler; ileri/geri veya duraklatma kontrolü yoktur. Hikâyeler gizli rollerden veya oyuncu kimliklerinden etkilenmez. Oyun başlayınca hikâye alanı ve zamanlayıcısı kaldırılır. Ek sunucu sorgusu, medya indirmesi veya otomatik hikâye sesi yoktur.
 

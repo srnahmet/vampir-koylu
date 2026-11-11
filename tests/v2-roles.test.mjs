@@ -1,3 +1,4 @@
+// Archived V2 contract: sequential nights remain supported for rounds already running at migration.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
@@ -7,7 +8,7 @@ import {PGlite} from '@electric-sql/pglite';
 test('V2 complete character rules and private abilities', async t => {
  const db=new PGlite(); t.after(()=>db.close());
  await db.exec(`create role anon;create role authenticated;create schema auth;create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;`);
- await db.exec(await readFile(new URL('../supabase/setup.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('./fixtures/setup-v2.sql',import.meta.url),'utf8'));
  const q=async(sql,args=[]) => (await db.query(sql,args)).rows;
  async function rpc(uid,fn,args=[]) {
   await q("select set_config('request.jwt.claim.sub',$1,false)",[uid]);

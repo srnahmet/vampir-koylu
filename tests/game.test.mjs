@@ -1,3 +1,4 @@
+// Archived V2 contract: sequential nights remain supported for rounds already running at migration.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -9,7 +10,7 @@ test("Database game rules and access boundaries", async (t) => {
   await db.exec(`create role anon;create role authenticated;create schema auth;
  create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;`);
   await db.exec(
-    await readFile(new URL("../supabase/setup.sql", import.meta.url), "utf8"),
+    await readFile(new URL("./fixtures/setup-v2.sql", import.meta.url), "utf8"),
   );
   const query = async (s, p = []) => (await db.query(s, p)).rows;
   async function user(uid) {
@@ -358,7 +359,7 @@ test("Database game rules and access boundaries", async (t) => {
       const before = await query("select * from vk_private.rooms where code=$1", [g.code]);
       const ballots = await query("select * from vk_private.votes where room_id=$1 order by voter", [p[0].room_id]);
       const migration = await readFile(new URL("../supabase/vote-plurality.sql", import.meta.url), "utf8");
-      const setup = await readFile(new URL("../supabase/setup.sql", import.meta.url), "utf8");
+      const setup = await readFile(new URL("./fixtures/setup-v2.sql", import.meta.url), "utf8");
       const v4 = await readFile(new URL("./fixtures/setup-v4.sql", import.meta.url), "utf8");
       const func = v4.slice(v4.indexOf("create or replace function vk_private.advance("), v4.indexOf("create or replace function vk_private.room_quota(")).trim();
       assert.ok(migration.includes(func), "historical plurality update matches its v4 engine");

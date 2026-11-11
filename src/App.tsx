@@ -8,6 +8,8 @@ import {
 } from "react";
 import {
   ArrowLeft,
+  Type,
+  Trophy,
   ArrowRight,
   Check,
   ChevronDown,
@@ -39,6 +41,11 @@ import {
 import QRCode from "qrcode";
 import {
   defaults,
+  optionalRoles,
+  activeRoles,
+  factionOf,
+  factionLabels,
+  type RoleMode,
   friendlyError,
   roles,
   rpc,
@@ -69,6 +76,9 @@ import { HostManagement } from "./HostManagement";
 import { GameRecap } from "./GameRecap";
 import { RoleEffect } from "./RoleEffect";
 import { CharacterGallery, roleTips } from "./CharacterGallery";
+
+import { NightChoices } from "./NightChoices";
+import { PrivateRoleNotices, PersonalObjective } from "./PersonalRole";
 
 type Panel = "create" | "settings" | "rename" | "join" | "characters" | "rules" | "theme" | "role" | null;
 function Modal({
@@ -155,6 +165,7 @@ function RoleInfo({ role, twoVampires = false }: { role: Role; twoVampires?: boo
       </div>
       <span className="eyebrow">{r.tag}</span>
       <h3>{r.name}</h3>
+      <span className={`faction-badge ${factionOf(role)}`}>{factionLabels[factionOf(role)]}</span>
       <p>{r.description}</p>
       {role === "vampire" && twoVampires && <p>Takım arkadaşınla aynı anda hedef öner. Süre sonunda farklı hedefler seçtiyseniz ikisinden biri rastgele belirlenir. Bir vampir elense bile diğeriyle oyun sürer.</p>}
       <div className="rule-box">
@@ -163,7 +174,7 @@ function RoleInfo({ role, twoVampires = false }: { role: Role; twoVampires?: boo
         </strong>
         <p>{role === "vampire" && twoVampires ? "Hayatta bir vampir varken köy üç veya daha az kişiyle geceye girerse vampir takımı kazanır." : r.win}</p>
       </div>
-      <p className="muted small">{role === "vampire" && twoVampires ? "Vampir takımının son üyesi de elenirse köy kazanır. Soytarı idam edilirse yalnızca o kazanır." : r.lose}</p>
+      <p className="muted small">{role === "vampire" && twoVampires ? "Vampir takımının son üyesi de elenirse köy kazanır. Soytarı idam edilirse ana zafer onundur; önceden hedefini idam ettirmiş Sapkın da kişisel zaferini korur." : r.lose}</p>
       <div className="rule-box"><strong>✦ Küçük bir taktik</strong><p>{roleTips[role]}</p></div>
     </div>
   );
@@ -187,9 +198,7 @@ function Rules() {
           derse ilk konuşma erken biter.
         </li>
         <li>
-          <strong>Gece sessizlik.</strong> Vampir hedefini, varsa doktor
-          ardından korumasını seçer. Koruma ve şaman da varsa kendi hamlesini yapar. Her aşama en az ayarlanan süre kadar sürer;
-          seçim olmadan geçilmez.
+          <strong>Gece sessizlik.</strong> Vampir, doktor, şaman ve büyücü aynı anda seçim yapar. Ana süre dolunca herkes hazırsa sabah olur; eksik seçimler için 5 veya 10 saniye ek süre verilir. Sonunda mevcut hamleler uygulanır. İstersen pas geçebilirsin.
         </li>
         <li>
           <strong>Gündüz şüphe.</strong> Konuşma süresi dolunca oylama açılır.
@@ -210,13 +219,13 @@ function Rules() {
           <strong>En çok oy alan elenir.</strong> Tek başına en çok oyu alan
           oyuncu idam edilir. En yüksek oy birden fazla kişide eşitse ek
           tartışma yapılır; yeni oylamada yalnızca birincilikte eşit kalan
-          adaylar seçilebilir. Herkes yine oy kullanır. Tek aday kalırsa
+          adaylar seçilebilir. Art arda ikinci eşitlikte kimse idam edilmeden geceye geçilir. Son oylamada bunun uyarısı görünür. Herkes yine oy kullanır. Tek aday kalırsa
           kendine oy veremediği için oylamaya katılmaz.
         </li>
       </ol>
       <div className="rule-box">
         Vampir 3 veya daha az kişiyle geceye girerse kazanır. Son vampir idam
-        edilirse köy, soytarı idam edilirse yalnızca soytarı kazanır. İki vampirli masada iki vampir aynı anda hedef önerir; farklı önerilerden biri süre sonunda rastgele seçilir. Ölenlerin
+        edilirse köy, soytarı idam edilirse soytarı ana zaferi kazanır. Sapkın’ın tamamlanmış kişisel zaferi korunur. İki vampirli masada iki vampir aynı anda hedef önerir; farklı önerilerden biri süre sonunda rastgele seçilir. Ölenlerin
         rolleri oyun sonunda açılır. Bağlantı veya çıkarma sonrası vampirle
         birlikte yalnızca 2 kişi kalırsa da vampir kazanır.
       </div>
@@ -283,6 +292,8 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>(
     (localStorage.getItem("vk-theme") as Theme) || "classic",
   );
+  const [readableFont, setReadableFont] = useState(localStorage.getItem("vk-readable-font") === "true");
+  useEffect(() => { document.documentElement.dataset.font = readableFont ? "readable" : "classic"; localStorage.setItem("vk-readable-font", String(readableFont)); }, [readableFont]);
   const [nightPreview, setNightPreview] = useState(false);
   const [game, setGame] = useState<Game | null>(null);
   const [busy, setBusy] = useState(false);
@@ -479,6 +490,20 @@ export default function App() {
       setBusy(false);
     }
   }
+  async function submitNight(kind: string, targets: string[]) {
+    if (!game || busy) return;
+    setBusy(true); setError("");
+    try { await rpc("vk_night_action", { p_code: code, p_seq: game.seq, p_action: kind, p_targets: targets }); await refresh(); }
+    catch (e) { if (!removed(e)) { setError(friendlyError(e)); await refresh().catch(removed); } }
+    finally { setBusy(false); }
+  }
+  async function changeRoleSetting(role: Exclude<Role, "villager" | "vampire">, mode: RoleMode) {
+    if (!game || !game.is_host || busy) return;
+    setBusy(true); setError("");
+    try { await rpc("vk_update_lobby", { p_code: code, p_seq: game.seq, p_settings: { ...game.settings, [role]: mode } }); await refresh(); setNotice("Karakter ayarı güncellendi. Herkes yeniden hazır olmalı."); }
+    catch (e) { setError(friendlyError(e)); }
+    finally { setBusy(false); }
+  }
   async function copy(text: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -505,7 +530,7 @@ export default function App() {
   const canShoot = game?.me?.role === "gunslinger" && game.me.alive && !game.me.shot_used && !game.me.silenced && ["intro", "day", "runoff"].includes(game.phase);
   const canChoose = !!game && ((game.me?.alive && (
     (game.phase === "voting" && game.can_vote !== false && !game.my_vote) ||
-    (game.phase === "night" && game.my_turn && (!game.has_chosen || (game.settings.two_vampires && game.night_action === "kill" && Date.now() + offset < Date.parse(game.ends_at)))) ||
+    (game.phase === "night" && (game.rules_version || 2) < 3 && game.my_turn && (!game.has_chosen || (game.settings.two_vampires && game.night_action === "kill" && Date.now() + offset < Date.parse(game.ends_at)))) ||
     (canShoot && usingShot))) || (["hunter", "mayor_decision"].includes(game.phase) && game.my_turn));
   const allowed = (p: Player) => p.alive && !game?.excluded_targets?.includes(p.id) &&
     !(game?.phase === "night" && game.night_action === "kill" && game.vampire_team?.some(v => v.id === p.id)) &&
@@ -524,14 +549,12 @@ export default function App() {
     voting: "Köy kararını veriyor",
     runoff: "Köy henüz anlaşamadı",
     execution: "Köyün kararı belli oldu",
+    nightfall: "Bu kez kimse idam edilmiyor",
     hunter: "Avcının son sözü",
     mayor_decision: "Son karar muhtarda",
     finished: "Köydeki sır çözüldü!",
   };
-  const didWin =
-    game?.winner === "village"
-      ? !["vampire", "vampire_cub", "jester"].includes(currentRole)
-      : game?.winner === "vampire" ? ["vampire", "vampire_cub"].includes(currentRole) : game?.winner === currentRole;
+  const didWin = game?.me?.won ?? (game?.winner === "jester" ? currentRole === "jester" : factionOf(currentRole) === game?.winner);
 
   return (
     <>
@@ -576,6 +599,7 @@ export default function App() {
             </button>
             <button className="nav-link" aria-label="Karakterler" onClick={() => open("characters")}><Users size={17} /><span>Karakterler</span></button>
             <span className="nav-divider" />
+            <button className="icon-button font-toggle" aria-label="Okunabilir yazı tipi" aria-pressed={readableFont} title={readableFont ? "Klasik yazı tipine dön" : "Okunabilir yazı tipine geç"} onClick={() => setReadableFont(!readableFont)}><Type size={19} /><span>{readableFont ? "Sade" : "Klasik"}</span></button>
             <button
               className="icon-button sound-toggle"
               data-sound-toggle
@@ -679,7 +703,7 @@ export default function App() {
                   <span>
                     <span className="tiny-square" /> KÜÇÜK BİR KÖY, BÜYÜK SIRLAR
                   </span>
-                  <span>V2 · LVL. 02</span>
+                  <span>V2.1 · LVL. 02</span>
                 </div>
                 <Village night={activeNight} />
                 <div className="speech-bubble">
@@ -725,7 +749,7 @@ export default function App() {
                 </span>
               </div>
               <div className="role-grid">
-                {(Object.keys(roles) as Role[]).map((role) => (
+                {activeRoles.map((role) => (
                   <article className={`role-card ${role}`} key={role}>
                     <div className="role-card-top">
                       <Sprite role={role} />
@@ -833,6 +857,8 @@ export default function App() {
               )}
             </div>
             {game.announcement?.kind === "departure" && game.phase !== "finished" && <div className="departure-notice" role="status"><WifiOff size={18} /><span>{game.announcement.text}</span></div>}
+            <PrivateRoleNotices game={game} />
+            <PersonalObjective game={game} />
             <VoicePanel game={game} voice={voice} />
             {["intro", "day", "runoff"].includes(game.phase) && (
               <EarlyAdvance
@@ -933,7 +959,7 @@ export default function App() {
                       </span>
                       {game.settings.two_vampires && <span>İki vampir · en az 6 oyuncu</span>}
                     </div>
-                    <LobbyRoleSettings settings={game.settings} />
+                    <LobbyRoleSettings settings={game.settings} canEdit={game.is_host} busy={busy} onChange={changeRoleSetting} />
                     <div className="lobby-edit-actions">
                       {game.me && <button className="button secondary" onClick={() => { setName(game.me?.name || ""); open("rename"); }}>İsmimi değiştir</button>}
                       {game.is_host && <button className="button secondary" onClick={() => { setCfg({ ...defaults, ...game.settings }); open("settings"); }}><Palette size={16} /> Masa ayarları</button>}
@@ -996,6 +1022,7 @@ export default function App() {
                       </h2>
                       {game.phase === "dealing" ? (
                         <>
+                          <span className={`faction-badge ${factionOf(currentRole)}`}>{factionLabels[factionOf(currentRole)]}</span>
                           <h3 className="revealed-role">
                             {roles[currentRole].name}
                           </h3>
@@ -1041,12 +1068,14 @@ export default function App() {
                       {game.winner === "village"
                         ? "Vampir takımının tüm üyeleri elendi. Köy takımı kazandı."
                         : game.winner === "jester"
-                          ? "Soytarı idam edildi ve tek başına kazandı."
+                          ? "Soytarı idam edildi ve ana zaferi kazandı. Kesinleşmiş Sapkın zaferleri de korunur."
                           : "Vampir hayatta ve köyü ele geçirecek kadar az oyuncu kaldı."}
                     </p>
                     <div className="final-roles">
                       {game.players.map((p) => (
-                        <div key={p.id}>
+                        <div key={p.id} className={`final-character ${p.won ? "won" : "lost"}`}>
+                          <span className="outcome-badge" aria-label={p.won ? "Kazandı" : "Kazanamadı"} title={p.won ? "Kazandı" : "Kazanamadı"}>{p.won ? <Trophy size={15} /> : <X size={15} />}</span>
+                          {p.fanatic_target_mark && <span className="fanatic-stamp">HEDEF</span>}
                           <Sprite role={p.role || "villager"} />
                           <strong>
                             #{p.number} {p.name}
@@ -1067,11 +1096,11 @@ export default function App() {
                       {game.me?.silenced && game.me.alive && ["day", "runoff"].includes(game.phase) && <div className="silence-notice"><RoleEffect kind="silence" small /><strong>Bugün sessizsin. Yalnızca oy kullanabilirsin.</strong></div>}
                       {["gunslinger", "hunter", "guilt", "silence", "mayor"].includes(game.announcement?.kind || "") && !["night_result", "execution"].includes(game.phase) && <div className="role-event-notice" role="status"><RoleEffect kind={game.announcement!.kind} small /><p>{game.announcement?.text}</p></div>}
                       {game.phase === "night_result" ||
-                      game.phase === "execution" ? (
+                      game.phase === "execution" || game.phase === "nightfall" ? (
                         <div className="announcement" aria-live="polite">
                           {["bodyguard", "guilt"].includes(game.announcement?.kind || "") ? <RoleEffect kind={game.announcement!.kind} /> : <EventScene
                             kind={
-                              game.announcement?.kind === "departure" ? "discussion" : game.announcement?.kind === "saved"
+                              game.phase === "nightfall" ? "night" : game.announcement?.kind === "departure" ? "discussion" : game.announcement?.kind === "saved"
                                 ? "saved"
                                 : game.phase === "execution"
                                   ? "execution"
@@ -1142,7 +1171,7 @@ export default function App() {
                             <span>
                               {game.votes_cast}/{game.votes_required ?? alive.length} kişi oy verdi
                             </span>
-                            <span>Eşitlikte tekrar</span>
+                            <span>{game.tie_streak === 1 ? "Son oylama · eşitlikte gece" : "İlk eşitlikte tekrar"}</span>
                           </div>
                           <div className="progress-track">
                             <span
@@ -1180,10 +1209,11 @@ export default function App() {
                           </p>
                         </>
                       )}
+                      {game.tie_streak === 1 && ["runoff", "voting", "mayor_decision"].includes(game.phase) && <div className="last-vote-warning" role="status"><Moon size={18} /><strong>Son oylama: bir kez daha eşitlik olursa kimse idam edilmeden geceye geçilecek.</strong></div>}
                       {["runoff", "voting"].includes(game.phase) && !!game.vote_candidates?.length && <div className="runoff-candidates">
                         <strong>{game.phase === "runoff" ? "EŞİTLİK!" : "Bu oylamanın adayları"}</strong>
                         <div className="tie-contenders">{votingCandidates.map((p, i) => <div className="tie-contender" key={p.id}>{i > 0 && <span className="tie-vs">VS</span>}<span className="tie-person"><span className="number-badge">{p.number}</span><b>{p.name}</b></span></div>)}</div>
-                        <br />Herkes oy verir; yalnızca bu adaylar seçilebilir. Yeniden eşitlik olursa sadece yeni birinciler kalır.
+                        <br />Herkes oy verir; yalnızca bu adaylar seçilebilir. Yeniden eşitlik olursa kimse idam edilmeden gece başlar.
                         {game.phase === "voting" && game.me?.alive && game.can_vote === false && <p>Tek aday sensin. Kendine oy veremediğin için bu oylamaya katılmıyorsun; diğer oyuncuların oyları bekleniyor.</p>}
                       </div>}
                       {game.vampire_decision && <div className="vampire-decision" role="status"><Sparkles size={22} /><div><strong>{game.vampire_decision.automatic ? "Süre doldu: hedef belirlendi" : game.vampire_decision.random ? "Kader hedefi seçti" : "Hedef belirlendi"}</strong><p>{(() => { const p = game.players.find(x => x.id === game.vampire_decision?.target); return p ? `#${p.number} ${p.name}` : "Hedef belirlendi"; })()}</p><small>Bu hedefin korunup korunmadığı gece sonunda belli olur.</small></div></div>}
@@ -1427,7 +1457,7 @@ export default function App() {
                 <span className="small muted">İsteğe bağlı roller</span>
               </div>
               <label className="role-toggle"><span className="feature-symbol"><Moon size={22} /></span><span><strong>İki vampir</strong><small>En az 6 oyuncu. İki vampir aynı anda hedef seçer; süre sonunda anlaşamazlarsa iki hedeften biri rastgele seçilir.</small></span><input type="checkbox" checked={cfg.two_vampires} onChange={e => setCfg({ ...cfg, two_vampires:e.target.checked })} /><span className="switch" /></label>
-              {(["doctor", "jester", "mayor", "bodyguard", "hunter", "shaman", "gunslinger", "vampire_cub"] as const).map((role) => (
+              {optionalRoles.map((role) => (
                 <RoleOptions
                   key={role}
                   role={role}
@@ -1523,6 +1553,7 @@ export default function App() {
                   Süreleri özelleştir <ChevronDown size={16} />
                 </span>
               </summary>
+              <label className="field">Gece ek süresi<select value={cfg.night_grace_seconds} onChange={e => setCfg({ ...cfg, night_grace_seconds: Number(e.target.value) })}><option value={5}>5 saniye</option><option value={10}>10 saniye</option></select><small>Seçim gelmezse süre sonunda pas sayılır.</small></label>
               <div className="duration-grid">
                 {(
                   [
@@ -1535,7 +1566,7 @@ export default function App() {
                     },
                     {
                       key: "night_seconds",
-                      label: "Her gece hamlesi",
+                      label: "Ortak gece seçim süresi",
                       min: 15,
                       max: 120,
                     },
@@ -1583,8 +1614,7 @@ export default function App() {
                 ))}
               </div>
               <p className="small muted">
-                Gece ve oylama, süre dolsa da tüm gerekli seçimler tamamlanana
-                kadar bekler. Bağlantısı kopan oyuncu, bekleme süresi dolarsa o turdan elenir.
+                Gece, ana süre ve ek süre sonunda mevcut seçimlerle ilerler; eksik hamleler pas sayılır. Oylama tüm geçerli oyları bekler. Bağlantısı kopan oyuncu, bekleme süresi dolarsa o turdan elenir.
               </p>
             </details>
             <div className="form-section">
@@ -1766,7 +1796,7 @@ export default function App() {
           title={`Sadece sana, #${game.me?.number}`}
           onClose={() => setPanel(null)}
         >
-          <RoleInfo role={currentRole} twoVampires={game.settings.two_vampires} />
+          <RoleInfo role={currentRole} twoVampires={game.settings.two_vampires} /><PersonalObjective game={game} />
           <button
             className="button secondary full"
             onClick={() => setPanel(null)}

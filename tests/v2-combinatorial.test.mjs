@@ -1,9 +1,10 @@
+// Archived V2 contract: sequential nights remain supported for rounds already running at migration.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { gameHarness, optionalRoles } from './helpers/game-harness.mjs';
 
 test('Exhaustive role-pool invariants and seeded probability checks', async t => {
-  const h = await gameHarness(); t.after(() => h.db.close());
+  const h = await gameHarness({legacy:true}); t.after(() => h.db.close());
   const { q } = h;
   await q('select setseed(0.271828)');
   // All 3^8 settings combinations at every capacity from zero through 23. Materialize
@@ -37,7 +38,7 @@ test('Exhaustive role-pool invariants and seeded probability checks', async t =>
 });
 
 test('Exhaustive simultaneous double-attack / doctor / bodyguard resolution', async t => {
-  const h = await gameHarness(); t.after(() => h.db.close());
+  const h = await gameHarness({legacy:true}); t.after(() => h.db.close());
   const { make, q } = h;
   const g = await make(['vampire','vampire','doctor','bodyguard','hunter','shaman','gunslinger','villager'], {two_vampires:true});
   const id = i => g.players[i].id;

@@ -1,3 +1,5 @@
+> Bu belge önceki V2 sürümünün kaydıdır. Güncel kurallar ve doğrulama için [V2.1 rehberine](V2_1_KURALLAR_VE_TESTLER.md) bakın.
+
 # V2.0.1 test ve oyun kuralı denetimi
 
 ## Kapsam

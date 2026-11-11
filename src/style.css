@@ -19,6 +19,33 @@
   --heading: "Pixelify Sans Variable", monospace;
   color-scheme: light;
 }
+:root[data-font="readable"] { --heading:"Nunito Variable", Nunito, system-ui, sans-serif; }
+:root[data-font="readable"] .timer, :root[data-font="readable"] .countdown-number, :root[data-font="readable"] .number-badge { font-variant-numeric:tabular-nums; letter-spacing:0; }
+.font-toggle { gap:5px; display:inline-flex; align-items:center; }
+.font-toggle span { font-size:10px; }
+.font-toggle[aria-pressed="true"] { background:var(--soft); color:var(--accent-dark); }
+.faction-badge { display:inline-flex; width:fit-content; margin:6px 0; padding:6px 12px; border:1px solid var(--accent); border-radius:30px; color:var(--accent-dark); background:var(--soft); font-size:12px; font-weight:900; }
+.faction-badge.vampire { color:#8c4965; background:#f5e7ef; border-color:#c694ae; }
+.faction-badge.independent { color:#786025; background:#f5edcf; border-color:#c9b77a; }
+.last-vote-warning, .night-window, .personal-objective { padding:13px 15px; border:1px solid var(--accent); border-radius:12px; background:var(--soft); margin:14px 0; font-size:13px; }
+.last-vote-warning { display:flex; align-items:center; gap:10px; border-color:#c29b55; background:#f7edd4; color:#735c29; }
+.last-vote-warning svg { flex-shrink:0; }
+.night-window.grace { border-color:var(--purple); background:var(--purple-soft); }
+.night-mode { display:flex; gap:8px; margin:15px 0; }
+.night-mode button { flex:1; padding:12px 8px; border:1px solid var(--line); border-radius:10px; color:var(--ink); background:var(--surface); }
+.night-mode button[aria-pressed=true] { border-color:var(--purple); background:var(--purple-soft); font-weight:900; }
+.night-pass { margin-top:8px; }
+.night-saved { font-size:12px; border-left:3px solid var(--accent); padding:8px 12px; background:var(--soft); }
+.shared-night .target-grid { margin:16px 0; }
+.target-order { font-weight:900; color:var(--accent-dark); }
+.private-role-notice { margin:18px 0; padding:22px; border:2px solid var(--purple); }
+.private-role-notice > div { margin-bottom:12px; }
+.personal-objective p { margin:5px 0 0; }
+.personal-objective.achieved { border-color:#bca65e; }
+.final-character { position:relative; }
+.outcome-badge { position:absolute; top:6px; right:6px; display:grid; place-items:center; width:25px; height:25px; border-radius:50%; background:#f4e3df; color:#985a55; border:1px solid currentColor; }
+.won .outcome-badge { color:#627838; background:#eaf0d9; }
+.fanatic-stamp { position:absolute; top:50px; right:2px; padding:3px 5px; border:2px solid #a45f6f; color:#a45f6f; border-radius:3px; font-size:9px; font-weight:900; letter-spacing:1px; transform:rotate(-12deg); }
 * {
   box-sizing: border-box;
 }

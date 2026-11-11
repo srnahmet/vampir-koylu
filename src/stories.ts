@@ -11,6 +11,9 @@ export type VillageStory = {
 
 export const storyInterval = 15000;
 export const villageStories: readonly VillageStory[] = [
+  { id: "kader-kitabi", title: "Değirmenin gizli kitabı", text: "Büyücü iki insanın kaderini bağlar. Fakat sayfalara vampir kanı değerse bedeli kendi canıdır.", cast: ["wizard"], kind: "story", night: true },
+  { id: "ilk-isirik", title: "İlk kan bağı", text: "Alfa bir gece avlanmaz. Sabah köy eksilmemiştir; karanlığın ailesi ise büyümüş olabilir.", cast: ["alpha_vampire", "villager"], kind: "story", night: true },
+  { id: "tek-isim", title: "Defterdeki tek isim", text: "Sapkın meydanı izler. Onun için köyün kavgası, defterindeki ismin idamıyla biter; oyun başkaları için sürer.", cast: ["fanatic"], kind: "story" },
   {
     id: "ilk-savunma",
     title: "İlk savunma",
@@ -92,14 +95,6 @@ export const villageStories: readonly VillageStory[] = [
     kind: "tip",
   },
   {
-    id: "kalkan-sozu",
-    title: "Kalkanın sözü",
-    text: "Koruma, koruduğu kişi saldırıya uğrarsa onun yerine ölür. Köyün en ağır sözü bazen ‘Ben buradayım’dır.",
-    cast: ["bodyguard", "villager"],
-    kind: "tip",
-    night: true,
-  },
-  {
     id: "son-ok",
     title: "Son bir ok",
     text: "Avcı elense bile son sözünü söyleyebilir: öldüğünde seçtiği bir oyuncuyu yanında götürür.",
@@ -136,13 +131,6 @@ export const villageStories: readonly VillageStory[] = [
     cast: ["vampire_cub", "vampire"],
     kind: "tip",
     night: true,
-  },
-  {
-    id: "iki-koruyucu",
-    title: "İki farklı cesaret",
-    text: "Doktor saldırıyı önler. Koruma ise koruduğu kişinin yerine ölümü üstlenir. Aynı niyet, iki farklı yol.",
-    cast: ["doctor", "bodyguard"],
-    kind: "tip",
   },
   {
     id: "iki-sapka",
@@ -223,13 +211,6 @@ export const villageStories: readonly VillageStory[] = [
     title: "Sabırlı sandık",
     text: "Herkes oy verse bile oylamanın asgari süresi beklenir. Köy acele etse de sandık etmez.",
     cast: ["villager", "jester"],
-    kind: "tip",
-  },
-  {
-    id: "son-cay",
-    title: "Son çay",
-    text: "Muhtar ‘Kim çay ister?’ diye sordu. Koruma kalkanını sehpa yaptı. Köy bir anlığına herkese güvendi.",
-    cast: ["mayor", "bodyguard"],
     kind: "tip",
   },
 ];
