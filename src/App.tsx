@@ -815,7 +815,7 @@ export default function App() {
               {game.round_number > 1 && <span className="pill">Rövanş · {game.round_number}. oyun</span>}
               {game.is_observer ? (
                 <span className="observer-badge">
-                  <Monitor size={15} /> {game.is_host ? "Paylaşım ekranı" : "İzleyici"}
+                  <Monitor size={15} /> {game.is_host && !game.member?.spectator ? "Paylaşım ekranı" : "İzleyici"}
                 </span>
               ) : (
                 <button
@@ -925,7 +925,7 @@ export default function App() {
                         <div className="empty-village">
                           <Users size={28} />
                           <p>
-                            Henüz kimse gelmedi.
+                            Henüz oynayacak oyuncu yok.
                             <br />
                             Davet linkini gönder, köy dolsun!
                           </p>
