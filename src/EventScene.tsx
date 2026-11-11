@@ -8,6 +8,7 @@ export type SceneKind =
   | "night_death"
   | "execution"
   | "saved"
+  | "quiet"
   | "village_win"
   | "vampire_win"
   | "jester_win"
@@ -19,6 +20,7 @@ const labels: Record<SceneKind, string> = {
   night_death: "Sönen fener ve köyden ayrılan bir ruh",
   execution: "Köyün kararıyla meydandan ayrılan bir köy sakini",
   saved: "Doktorun koruma kalkanıyla güvende kalan köy sakini",
+  quiet: "Sakin bir sabah: bütün köy sakinleri hayatta",
   village_win: "Güneşli köy meydanında köylülerin zafer kutlaması",
   vampire_win: "Ayın altında zaferini kutlayan vampir",
   jester_win: "Konfetiler arasında zafer dansı yapan soytarı",
@@ -47,6 +49,10 @@ const casts: Record<SceneKind, Cast[]> = {
   saved: [
     { role: "doctor", x: 132, size: 66, effect: "healer" },
     { role: "villager", x: 219, size: 66, neutral: true, effect: "protected" },
+  ],
+  quiet: [
+    { role: "villager", x: 140, size: 64, neutral: true },
+    { role: "villager", x: 225, size: 64, neutral: true },
   ],
   village_win: [
     { role: "villager", x: 104, size: 57, effect: "celebrate" },
@@ -288,6 +294,7 @@ export function EventScene({
             night_death: "KÖYDE BİR EKSİĞİZ",
             execution: "KÖYÜN KARARI",
             saved: "İYİ Kİ DOKTOR VAR",
+            quiet: "KÖY EKSİLMEDEN UYANDI",
             village_win: "KÖYÜMÜZ GÜVENDE",
             vampire_win: "GECENİN KAZANANI",
             jester_win: "SON GÜLEN SOYTARI",

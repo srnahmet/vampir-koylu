@@ -24,6 +24,8 @@ Büyüde hem aktör hem hedef aynı yer değişimine tabi tutulur. A oyuncusunun
 
 Rolü değişenlere kaynağı veya büyücünün kimliği gönderilmez; yalnızca “Büyülendin” bildirimi ve yeni rol/zafer koşulu gösterilir. Dönüşümü yalnızca yeni vampir öğrenir; takım arkadaşları yeni vampiri özel takım alanında görür. Ortak ekrana dönüşüm veya büyücü kimliği yazılmaz. Başka bir yetenek ölüm yaratırsa sonuç ekranı gerçek ölümleri gösterir.
 
+Ölüm olmayan ortak sabah sahnesi nötr köy sakinleri kullanır. Pas, dönüşüm ve doktor kurtarışı aynı genel sahneyi gösterir; doktorun varlığı veya gecenin özel hamlesi görselden açıklanmaz.
+
 Sapkın’ın başarısı rol yerine oyuncuya aittir; oyun sonunda hedef damgası ve herkesin kazandı/kazanamadı simgesi gösterilir. Soytarı zaferi daha önce kesinleşmiş Sapkın zaferini silmez. Diğer takım ödülleri oyuncunun oyun sonundaki rolüne göre belirlenir; elenmek takım ödülünü engellemez.
 
 ## Arayüz
@@ -39,6 +41,7 @@ Sapkın’ın başarısı rol yerine oyuncuya aittir; oyun sonunda hedef damgas�
 | --- | --- |
 | Büyücü matrisi | **864** rol çifti × saldırı × koruma senaryosu, çözüm kodundan bağımsız hedef/ölüm modeliyle karşılaştırılır. Vampirle temas, avcıya taşınan ölüm ve koruma dahil. |
 | Gece izin matrisi | **1.274** karakter × aşama × hamle denemesi; gerçek `authenticated` yetkisi, `anon` engeli ve özel tablo/fonksiyon erişim engelleri. |
+| Güncel rol havuzu | Dokuz ek koltuk rolünün 3⁹ ayarı × 0–23 boş koltuk = **472.392 yapılandırma**. Kapasite, tekrar, kapalı roller ve kesin rollerin önceliği denetlenir; ayrıca 4.096 güncel %50 çekilişi kontrol edilir. Alfa ayrı olarak vampir koltuğunu değiştirir. |
 | Yeni tam oyunlar | **84** sabit tohumlu oyun, 4–24 kişi, tek/iki vampir, büyü, dönüşüm, susturma, son ok, atış, konuşma sıraları ve bağlantı kopmalarıyla public RPC üzerinden tamamlanır. |
 | Süre ve gizlilik | Ana süre, 5/10 ek süre doğrulaması, pas, eksik hamle, değiştirilebilir seçim, geçersiz/eski hedef, ayrılan oyuncu ve tekrar sorgulamada aynı gecenin iki kez çözülmemesi. |
 | Zafer | Sapkın için sekiz ayrı ölüm nedeni; ölümden sonra kazanma, dönüşüm/rol değişimi sonrası kalıcı zafer; her tarafın bütün son oyun ödülleri; avcı son oku öncesi zaferin bekletilmesi. |
@@ -55,3 +58,11 @@ npm run build
 ```
 
 Bu kontroller belirtilen durumları ve tekrarlanabilir simülasyonları kapsar; bütün olası ağ ve kullanıcı davranışları için matematiksel hatasızlık ispatı değildir. Oyuncuların bilinçli biçimde hep pas geçmesi yeni gecelerde ölümü garanti etmez; aynı oylamanın sınırsız tekrarı ve gece hamlesi beklerken süresiz takılma engellenmiştir.
+
+## Yayın provası
+
+12 Kasım 2026: temiz kurulumda 178 test ve üretim derlemesi geçti; eklenen 472.392 yapılandırmalı havuz testi de ayrıca geçti (güncel toplam 179). Canlı Supabase geçişinden önceki 46 masa ve 3 aktif oyun aynı sayıda korundu; hepsi eski kural sürümünde bırakıldı. Yeni gece RPC’sinin `authenticated` erişimi açık, `anon` doğrudan erişimi kapalı doğrulandı.
+
+Gerçek Supabase üzerinde, tarayıcıdan kurulan ayrı bir prova masasına sekiz bağımsız test oyuncusu katıldı. Lobide kısa rol anahtarı herkesi yeniden hazırlanma durumuna aldı. Oyun tarayıcıdan başlatıldı; ilk ortak gecede Alfa bir oyuncuyu dönüştürdü, Büyücü doktor/şaman rollerini değiştirdi ve yalnızca ilgili üç oyuncu özel bildirim aldı. Diğer vampirin saldırısı iptal oldu, kimse ölmedi. Sapkın’ın hedefi oylamada idam edildi; oyun sürdü ve köy zaferiyle bitti. Finalde sekiz oyuncunun ödül simgeleri ve hedef damgası doğrulandı. Bu canlı prova uygulamanın normal kimlik doğrulama ve public RPC yollarını kullandı.
+
+Tarayıcıda font değişimi, 12 kartlı karakter galerisi ve 390 piksel telefon görünümünde gerçek gece bileşeninin iki hedef seçimi, Alfa dönüşüm onayı ve Pas işlemi incelendi. Yatay taşma görülmedi. Ortak sabahın doktora özel görseli bu incelemede nötr sahneyle değiştirildi.

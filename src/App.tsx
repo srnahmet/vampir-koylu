@@ -1101,7 +1101,7 @@ export default function App() {
                           {["bodyguard", "guilt"].includes(game.announcement?.kind || "") ? <RoleEffect kind={game.announcement!.kind} /> : <EventScene
                             kind={
                               game.phase === "nightfall" ? "night" : game.announcement?.kind === "departure" ? "discussion" : game.announcement?.kind === "saved"
-                                ? "saved"
+                                ? (game.rules_version || 2) >= 3 ? "quiet" : "saved"
                                 : game.phase === "execution"
                                   ? "execution"
                                   : "night_death"
@@ -1213,7 +1213,7 @@ export default function App() {
                       {["runoff", "voting"].includes(game.phase) && !!game.vote_candidates?.length && <div className="runoff-candidates">
                         <strong>{game.phase === "runoff" ? "EŞİTLİK!" : "Bu oylamanın adayları"}</strong>
                         <div className="tie-contenders">{votingCandidates.map((p, i) => <div className="tie-contender" key={p.id}>{i > 0 && <span className="tie-vs">VS</span>}<span className="tie-person"><span className="number-badge">{p.number}</span><b>{p.name}</b></span></div>)}</div>
-                        <br />Herkes oy verir; yalnızca bu adaylar seçilebilir. Yeniden eşitlik olursa kimse idam edilmeden gece başlar.
+                        <br />Herkes oy verir; yalnızca bu adaylar seçilebilir. {(game.rules_version || 2) >= 3 ? "Yeniden eşitlik olursa kimse idam edilmeden gece başlar." : "Yeniden eşitlik olursa yalnızca yeni birinciler kalır."}
                         {game.phase === "voting" && game.me?.alive && game.can_vote === false && <p>Tek aday sensin. Kendine oy veremediğin için bu oylamaya katılmıyorsun; diğer oyuncuların oyları bekleniyor.</p>}
                       </div>}
                       {game.vampire_decision && <div className="vampire-decision" role="status"><Sparkles size={22} /><div><strong>{game.vampire_decision.automatic ? "Süre doldu: hedef belirlendi" : game.vampire_decision.random ? "Kader hedefi seçti" : "Hedef belirlendi"}</strong><p>{(() => { const p = game.players.find(x => x.id === game.vampire_decision?.target); return p ? `#${p.number} ${p.name}` : "Hedef belirlendi"; })()}</p><small>Bu hedefin korunup korunmadığı gece sonunda belli olur.</small></div></div>}
