@@ -1,0 +1,14 @@
+.room-controls { display:flex; justify-content:flex-end; margin:8px 0 16px; }
+.room-controls > .text-button { font-size:12px; gap:7px; color:var(--muted); }
+.room-confirm { max-width:510px; }
+.room-confirm p { font-size:14px; line-height:1.7; }
+.room-confirm-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:10px; margin-top:24px; }
+.room-confirm-actions .danger { background:#a75c5c; color:#fffaf3; border-color:#8f4b4b; }
+.spectators-list { padding:14px 0; border-top:1px solid var(--line); margin-top:16px; }
+.spectators-list h3 { display:flex; align-items:center; gap:8px; margin:0 0 8px; font-size:15px; }
+.spectators-list h3 > span { color:var(--muted); font-size:12px; }
+.spectator-row { display:flex; align-items:center; gap:8px; padding:7px 0; font-size:12px; }
+.spectator-row > span { flex:1; min-width:0; overflow-wrap:anywhere; }
+.spectator-row small { color:var(--muted); }
+.spectator-action { flex-shrink:0; min-width:30px; padding:6px; }
+.observer-privacy { padding:10px 14px; border-radius:10px; background:var(--soft); font-size:12px; }

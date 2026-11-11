@@ -164,6 +164,9 @@ export type Game = {
   settings: Settings;
   is_host: boolean;
   is_observer: boolean;
+  member?: { id: string; number: number; name: string; spectator: boolean } | null;
+  spectators?: Player[];
+  role_details_hidden?: boolean;
   host?: {
     player_id: string | null;
     name: string;

@@ -18,7 +18,7 @@ export function LobbyReadiness({ game, busy, onToggle, onStart }: { game: Game; 
     {game.is_host ? <button className="button primary full" disabled={!allReady || busy} onClick={onStart}>
       {busy ? <LoaderCircle className="spin" size={19} /> : <Play size={19} />}
       {game.players.length < 4 ? `${4-game.players.length} arkadaş daha bekleniyor` : offline ? `${offline} oyuncunun bağlantısı bekleniyor` : !allReady ? `${pending} oyuncu hazırlanıyor` : "Oyunu başlat"}
-    </button> : <p className="small muted center">{!game.me ? "Bu masada boş koltuk bekliyorsun." : allReady ? "Herkes hazır! Masayı kuran kişinin başlatması bekleniyor." : game.me.ready ? "Hazırsın. Diğer oyuncular hazırlanıyor." : "Başlamadan önce Hazırım düğmesine dokun."}</p>}
+    </button> : <p className="small muted center">{game.member?.spectator ? "Bu tur izleyicisin; hazır olman gerekmiyor." : !game.me ? "Bu masada boş koltuk bekliyorsun." : allReady ? "Herkes hazır! Masayı kuran kişinin başlatması bekleniyor." : game.me.ready ? "Hazırsın. Diğer oyuncular hazırlanıyor." : "Başlamadan önce Hazırım düğmesine dokun."}</p>}
   </div>;
 }
 
