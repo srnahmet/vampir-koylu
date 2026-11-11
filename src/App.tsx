@@ -79,6 +79,7 @@ import { CharacterGallery, roleTips } from "./CharacterGallery";
 
 import { NightChoices } from "./NightChoices";
 import { PrivateRoleNotices, PersonalObjective } from "./PersonalRole";
+import { RoomControls, SpectatorAction, SpectatorChoice, SpectatorList } from "./RoomControls";
 
 type Panel = "create" | "settings" | "rename" | "join" | "characters" | "rules" | "theme" | "role" | null;
 function Modal({
@@ -322,11 +323,12 @@ export default function App() {
       ?.setAttribute("content", activeNight ? "#28273c" : "#f7f1e3");
   }, [actualTheme, activeNight]);
   const removed = useCallback((e: unknown) => {
-    if ((e as { code?: string })?.code !== "VK001") return false;
+    const err = e as { code?: string; message?: string };
+    if (!["VK001", "VK002"].includes(err?.code || "")) return false;
     codeRef.current = "";
     localStorage.removeItem("vk-room");
     setCode(""); setGame(null); setPanel(null); setError(""); setConnectionError("");
-    setNotice("Masa sahibi seni masadan çıkardı.");
+    setNotice(err.code === "VK002" || err.message === "Bu masa kapatıldı." ? "Masa kapatıldı. Ana sayfaya döndün." : "Masa sahibi seni masadan çıkardı.");
     history.replaceState(null, "", location.pathname);
     return true;
   }, []);
@@ -387,6 +389,7 @@ export default function App() {
   }, [code, refresh, removed]);
   useEffect(() => {
     setSelected(null); setUsingShot(false);
+    if (game?.phase === "lobby") setPanel(null);
   }, [game?.code, game?.seq]);
   useEffect(() => {
     if (selected && !game?.players.some(p => p.id === selected && p.alive)) setSelected(null);
@@ -464,6 +467,9 @@ export default function App() {
       else if (action === "ready") await rpc("vk_ready", { p_code: code, p_seq: game.seq, p_ready: !game.me?.ready });
       else if (action === "kick") await rpc("vk_kick", { p_code: code, p_seq: game.seq, p_target: target });
       else if (action === "rematch") await rpc("vk_rematch", { p_code: code, p_seq: game.seq });
+      else if (action === "return_lobby") await rpc("vk_return_lobby", { p_code: code, p_seq: game.seq });
+      else if (action === "close_room") await rpc("vk_close_room", { p_code: code, p_seq: game.seq });
+      else if (action === "spectator") await rpc("vk_set_spectator", { p_code: code, p_seq: game.seq, p_target: target, p_spectator: !game.spectators?.some(p => p.id === target) });
       else if (action === "transfer") await rpc("vk_transfer_host", { p_code: code, p_revision: game.host?.revision, p_target: target });
       else if (action === "speak")
         await rpc("vk_speak", {
@@ -703,7 +709,7 @@ export default function App() {
                   <span>
                     <span className="tiny-square" /> KÜÇÜK BİR KÖY, BÜYÜK SIRLAR
                   </span>
-                  <span>V2.1 · LVL. 02</span>
+                  <span>V2.1.1 · LVL. 02</span>
                 </div>
                 <Village night={activeNight} />
                 <div className="speech-bubble">
@@ -810,7 +816,7 @@ export default function App() {
               {game.round_number > 1 && <span className="pill">Rövanş · {game.round_number}. oyun</span>}
               {game.is_observer ? (
                 <span className="observer-badge">
-                  <Monitor size={15} /> {game.is_host ? "Paylaşım ekranı" : "İzleyici"}
+                  <Monitor size={15} /> {game.is_host && !game.member?.spectator ? "Paylaşım ekranı" : "İzleyici"}
                 </span>
               ) : (
                 <button
@@ -823,6 +829,7 @@ export default function App() {
               )}
             </div>
             <HostManagement game={game} busy={busy} onTransfer={(id) => act("transfer", id)} />
+            <RoomControls game={game} busy={busy} onReturn={() => act("return_lobby")} onClose={() => act("close_room")} />
             {game.is_observer && (
               <div className="observer-notice">
                 <Monitor size={18} />
@@ -860,6 +867,7 @@ export default function App() {
             <PrivateRoleNotices game={game} />
             <PersonalObjective game={game} />
             <VoicePanel game={game} voice={voice} />
+            {game.phase !== "lobby" && <SpectatorList game={game} busy={busy} onToggle={id => void act("spectator", id)} onKick={id => void act("kick", id)} />}
             {["intro", "day", "runoff"].includes(game.phase) && (
               <EarlyAdvance
                 game={game}
@@ -918,7 +926,7 @@ export default function App() {
                         <div className="empty-village">
                           <Users size={28} />
                           <p>
-                            Henüz kimse gelmedi.
+                            Henüz oynayacak oyuncu yok.
                             <br />
                             Davet linkini gönder, köy dolsun!
                           </p>
@@ -936,10 +944,12 @@ export default function App() {
                             <span className={`presence ${!p.online ? "away" : p.ready ? "" : "preparing"}`}>{!p.online ? "Bağlantı bekleniyor" : p.ready ? "Hazır" : "Hazırlanıyor"}</span>
                             <ConnectionStatus player={p} offset={offset} />
                           </span>
+                          <SpectatorAction game={game} player={p} busy={busy} onToggle={id => void act("spectator", id)} />
                           <KickButton game={game} player={p} busy={busy} onKick={(id) => act("kick", id)} />
                         </div>
                       ))}
                     </div>
+                    <SpectatorList game={game} busy={busy} onToggle={id => void act("spectator", id)} onKick={id => void act("kick", id)} />
                     <div className="lobby-settings">
                       {game.settings.pin_enabled && <span><LockKeyhole size={15} /> Şifreli masa</span>}
                       <span><WifiOff size={15} /> Bağlantı bekleme · {game.settings.disconnect_seconds || 60} sn</span>
@@ -961,15 +971,16 @@ export default function App() {
                     </div>
                     <LobbyRoleSettings settings={game.settings} canEdit={game.is_host} busy={busy} onChange={changeRoleSetting} />
                     <div className="lobby-edit-actions">
-                      {game.me && <button className="button secondary" onClick={() => { setName(game.me?.name || ""); open("rename"); }}>İsmimi değiştir</button>}
+                      {(game.member || game.me) && <button className="button secondary" onClick={() => { setName(game.member?.name || game.me?.name || ""); open("rename"); }}>İsmimi değiştir</button>}
                       {game.is_host && <button className="button secondary" onClick={() => { setCfg({ ...defaults, ...game.settings }); open("settings"); }}><Palette size={16} /> Masa ayarları</button>}
                     </div>
+                    <SpectatorChoice game={game} busy={busy} onToggle={id => void act("spectator", id)} />
                     <LobbyReadiness game={game} busy={busy} onToggle={() => act("ready")} onStart={() => act("start")} />
                     <p className="small muted center">
                       {game.is_host && game.is_observer ? (
                         "Sen masa sahibisin. En az 4 oyuncu hazır olduğunda oyunu başlatabilirsin."
                       ) : game.is_observer ? (
-                        "Masayı izliyorsun. Gizli rolün veya oyun numaran yok."
+                        "Bu turu izliyorsun. Rol almazsın ve diğer oyuncuların rollerini göremezsin."
                       ) : (
                         <>
                           Sen #{game.me?.number} numaralı oyuncusun. Numaran
@@ -1074,16 +1085,17 @@ export default function App() {
                     <div className="final-roles">
                       {game.players.map((p) => (
                         <div key={p.id} className={`final-character ${p.won ? "won" : "lost"}`}>
-                          <span className="outcome-badge" aria-label={p.won ? "Kazandı" : "Kazanamadı"} title={p.won ? "Kazandı" : "Kazanamadı"}>{p.won ? <Trophy size={15} /> : <X size={15} />}</span>
+                          {!game.role_details_hidden && <span className="outcome-badge" aria-label={p.won ? "Kazandı" : "Kazanamadı"} title={p.won ? "Kazandı" : "Kazanamadı"}>{p.won ? <Trophy size={15} /> : <X size={15} />}</span>}
                           {p.fanatic_target_mark && <span className="fanatic-stamp">HEDEF</span>}
-                          <Sprite role={p.role || "villager"} />
+                          <Sprite role={p.role || "villager"} neutral={game.role_details_hidden} />
                           <strong>
                             #{p.number} {p.name}
                           </strong>
-                          <span>{roles[p.role || "villager"].name}</span>
+                          <span>{game.role_details_hidden ? "Rol gizli" : roles[p.role || "villager"].name}</span>
                         </div>
                       ))}
                     </div>
+                    {game.role_details_hidden && <p className="observer-privacy">İzleyici olarak karakter rollerini ve perde arkasındaki gizli hamleleri göremezsin.</p>}
                     <RematchControls game={game} busy={busy} onRematch={() => act("rematch")} onNewTable={() => {
                         home();
                         setCfg({ ...defaults, theme });

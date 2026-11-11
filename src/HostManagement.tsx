@@ -7,7 +7,7 @@ export function HostManagement({ game, busy, onTransfer }: {
   game: Game; busy: boolean; onTransfer: (id: string) => Promise<void>;
 }) {
   const [target, setTarget] = useState("");
-  const candidates = game.players.filter(p => p.online && p.id !== game.host?.player_id && p.eliminated_by !== "kicked");
+  const candidates = [...game.players, ...(game.spectators || [])].filter(p => p.online && p.id !== game.host?.player_id && p.eliminated_by !== "kicked");
   useEffect(() => setTarget(""), [game.code, game.host?.revision]);
   if (!game.host) return null;
   const validTarget = candidates.some(p => p.id === target);

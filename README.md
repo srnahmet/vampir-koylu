@@ -1,6 +1,6 @@
-# Vampir Köylü — V2.1
+# Vampir Köylü — V2.1.1
 
-V2.1; ortak gece seçimi, iki eşitlik sınırı, okunabilir font, takım/zafer bilgisi ve üç yeni karakter içerir. **Üretimde önce [supabase/v2-1.sql](supabase/v2-1.sql), ardından web sürümü yayımlanır.** Devam eden V2 oyunları korunur; yeni dağıtımlar 2.1 kurallarını kullanır. Kurallar, denge tercihleri, gizlilik ve test kapsamı: [2.1 rehberi ve test raporu](V2_1_KURALLAR_VE_TESTLER.md).
+V2.1.1; oyuncu/izleyici seçimi, onaylı oyunu durdurma ve masayı kapatma kontrolleri içerir. **Mevcut V2.1 kurulumunda önce [masa yönetimi SQL geçişi](supabase/spectators-room-controls.sql), ardından web sürümü yayımlanır.** [İzleyici ve masa yönetimi rehberi](V2_1_1_MASA_YONETIMI.md). Ortak gece ve yeni karakter kuralları için [V2.1 rehberine](V2_1_KURALLAR_VE_TESTLER.md) bakın.
 
 Moderatörsüz, aynı masada herkesin kendi telefonundan oynadığı Türkçe parti oyunu. Piksel köyü, yumuşak gündüz/gece geçişleri, yedi renk paketi, QR kodla katılım ve gizli roller.
 

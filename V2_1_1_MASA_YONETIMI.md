@@ -1,0 +1,10 @@
+# V2.1.1 — İzleyiciler ve masa yönetimi
+
+Üretimde önce `supabase/spectators-room-controls.sql`, ardından web sürümü yayımlanır. Bu ek geçiş V2.1 üzerine uygulanır; açık oyunları ve mevcut seçimleri korur. Yeni kurulumda `supabase/setup.sql` yeterlidir. `v2.sql` ve `v2-1.sql` güncel tam kuruluma eşittir.
+
+- Oyuncu lobide **Bu turu izleyici olarak izle** / **Oyuncu olarak katıl** seçer. Masa sahibi kişi satırındaki göz/oyuncu simgesiyle başkasının durumunu değiştirebilir. Başka oyuncuların tercihini sıradan bir oyuncu değiştiremez. Değişiklik hazır onaylarını sıfırlar.
+- İzleyiciler ayrı listelenir, minimum oyuncu sayısına veya hazır kontrolüne dahil edilmez, rol almaz ve hamle/oy veremez. Sesli sohbeti dinleyebilir, mikrofon açamaz. Oyun sonunda da karakter rolleri, bireysel sonuçlar, Sapkın hedef damgası ve özel hamle özeti kendilerine gönderilmez. İzleyici seçimi rövanşta korunur; yeni oyun başlamadan tekrar oyuncu olunabilir. Paylaşım ekranı olarak kurulan mevcut adsız yönetici görünümünün ortak final ekranı davranışı korunur.
+- Masa sahibi oyun sırasında **Oyunu durdur ve lobiye dön** seçeneğini kullanır. **Emin misiniz?** onayından sonra bütün kişiler lobiye döner. Masa kodu, isimler, numaralar, ayarlar ve izleyici seçimleri korunur; roller, haklar, özel bildirimler ve hazır durumları sıfırlanır. Eski hamleler yeni turda kullanılamaz; ses oturumları kapanır.
+- Lobideki **Masayı kapat** seçeneği ayrıca onay ister. Kod kullanıma kapanır; bağlı kişiler bir sonraki durum sorgusunda ana sayfaya döner. Eski istemcilerin de ana sayfaya dönmesi için mevcut çıkarılma sinyali, yeni istemcilerde ayrı bir “Masa kapatıldı” mesajıyla kullanılır. Eski davetle tekrar girilemez. Geçmiş kayıtlar veritabanından silinmez.
+
+Doğrulama: `tests/room-controls.test.mjs` içindeki yedi odaklı kontrol; oyuncu/izleyici seçimi, yetkiler ve eski aşama numaraları, gizlilik, minimum oyuncu sayısı, bütün aşamalardan lobiye dönüş, kapanan kod, dinleyici mikrofon engeli ve açık oyun üzerinde tekrar uygulanabilir SQL geçişini kapsar. Standart üretim derlemesi ve mevcut regresyon paketi ayrıca çalıştırılır.
