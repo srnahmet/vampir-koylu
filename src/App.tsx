@@ -80,6 +80,8 @@ import { CharacterGallery, roleTips } from "./CharacterGallery";
 import { NightChoices } from "./NightChoices";
 import { PrivateRoleNotices, PersonalObjective } from "./PersonalRole";
 import { RoomControls, SpectatorAction, SpectatorChoice, SpectatorList } from "./RoomControls";
+import { DemoControls, DemoMobileNotice, DemoSetup } from "./demo/DemoControls";
+import type { DemoPlayer, DemoSeat, DemoSession } from "./demo/engine";
 
 type Panel = "create" | "settings" | "rename" | "join" | "characters" | "rules" | "theme" | "role" | null;
 function Modal({
@@ -241,6 +243,18 @@ function Rules() {
 
 export default function App() {
   const params = new URLSearchParams(location.search);
+  const [demoOpen, setDemoOpen] = useState(params.has("demo"));
+  const [demoSession, setDemoSession] = useState<DemoSession | null>(null);
+  const [demoPlayers, setDemoPlayers] = useState<DemoPlayer[]>([]);
+  const demoAttempt = useRef(0);
+  const [mobileView, setMobileView] = useState(() => matchMedia("(max-width: 760px)").matches);
+  useEffect(() => {
+    const media = matchMedia("(max-width: 760px)");
+    const update = () => setMobileView(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  useEffect(() => () => { void demoSession?.close(); }, [demoSession]);
   const invite = params.get("oda")?.toUpperCase() || "";
   const saved = localStorage.getItem("vk-room") || "";
   const [code, setCode] = useState(invite && invite === saved ? invite : "");
@@ -269,7 +283,7 @@ export default function App() {
     }
   }, []);
   useEffect(() => {
-    if (code) return;
+    if (code || demoOpen) return;
     void loadQuota();
     const timer = setInterval(() => void loadQuota(), 15000);
     const visible = () => {
@@ -280,16 +294,16 @@ export default function App() {
       clearInterval(timer);
       document.removeEventListener("visibilitychange", visible);
     };
-  }, [code, loadQuota]);
+  }, [code, demoOpen, loadQuota]);
   useEffect(() => {
-    if (code || !quota?.next_refresh_at) return;
+    if (code || demoOpen || !quota?.next_refresh_at) return;
     const delay = Date.parse(quota.next_refresh_at) - Date.now() - quotaOffset;
     const timer = setTimeout(
       () => void loadQuota(),
       Math.max(250, delay + 100),
     );
     return () => clearTimeout(timer);
-  }, [code, quota?.next_refresh_at, quotaOffset, loadQuota]);
+  }, [code, demoOpen, quota?.next_refresh_at, quotaOffset, loadQuota]);
   const [theme, setTheme] = useState<Theme>(
     (localStorage.getItem("vk-theme") as Theme) || "classic",
   );
@@ -333,6 +347,13 @@ export default function App() {
     return true;
   }, []);
   const refresh = useCallback(async () => {
+    if (demoSession) {
+      const data = await demoSession.state();
+      setGame(data);
+      setDemoPlayers(await demoSession.roster());
+      setOffset(Date.parse(data.server_now) - Date.now());
+      return data;
+    }
     if (!code) return;
     const start = Date.now();
     const data = await rpc<Game>("vk_state", { p_code: code });
@@ -350,8 +371,9 @@ export default function App() {
     setOffset(Date.parse(data.server_now) - (start + Date.now()) / 2);
     setConnectionError("");
     return data;
-  }, [code]);
+  }, [code, demoSession]);
   useEffect(() => {
+    if (demoOpen) return;
     if (!code) {
       setGame(null);
       return;
@@ -386,7 +408,7 @@ export default function App() {
       clearTimeout(t);
       document.removeEventListener("visibilitychange", visible);
     };
-  }, [code, refresh, removed]);
+  }, [code, demoOpen, refresh, removed]);
   useEffect(() => {
     setSelected(null); setUsingShot(false);
     if (game?.phase === "lobby") setPanel(null);
@@ -463,6 +485,12 @@ export default function App() {
     setBusy(true);
     setError("");
     try {
+      if (demoSession) {
+        await demoSession.action(action, target);
+        await refresh();
+        setSelected(null);
+        return;
+      }
       if (action === "start") await rpc("vk_start", { p_code: code });
       else if (action === "ready") await rpc("vk_ready", { p_code: code, p_seq: game.seq, p_ready: !game.me?.ready });
       else if (action === "kick") await rpc("vk_kick", { p_code: code, p_seq: game.seq, p_target: target });
@@ -499,7 +527,7 @@ export default function App() {
   async function submitNight(kind: string, targets: string[]) {
     if (!game || busy) return;
     setBusy(true); setError("");
-    try { await rpc("vk_night_action", { p_code: code, p_seq: game.seq, p_action: kind, p_targets: targets }); await refresh(); }
+    try { if (demoSession) await demoSession.choose(kind, targets); else await rpc("vk_night_action", { p_code: code, p_seq: game.seq, p_action: kind, p_targets: targets }); await refresh(); }
     catch (e) { if (!removed(e)) { setError(friendlyError(e)); await refresh().catch(removed); } }
     finally { setBusy(false); }
   }
@@ -519,6 +547,8 @@ export default function App() {
     }
   }
   function home() {
+    demoAttempt.current++;
+    setDemoOpen(false); setDemoSession(null); setDemoPlayers([]);
     codeRef.current = "";
     setCode("");
     setGame(null);
@@ -526,6 +556,39 @@ export default function App() {
     setError("");
     setConnectionError("");
     history.replaceState(null, "", location.pathname);
+  }
+  function openDemo() {
+    setError(""); setPanel(null); setDemoOpen(true);
+    const url = new URL(location.href); url.search = ""; url.searchParams.set("demo", "1");
+    history.replaceState(null, "", url);
+  }
+  async function startDemo(seats: DemoSeat[]) {
+    if (busy || mobileView) return;
+    const attempt = ++demoAttempt.current;
+    setBusy(true); setError("");
+    try {
+      const [{ createDemoSession }, { default: sql }, { loadDemoRuntime }] = await Promise.all([import("./demo/engine"), import("../supabase/setup.sql?raw"), import("./demo/browserRuntime")]);
+      const demo = await createDemoSession(sql, seats, await loadDemoRuntime());
+      if (attempt !== demoAttempt.current) { await demo.close(); return; }
+      setDemoSession(demo);
+      const data = await demo.state();
+      setGame(data); setDemoPlayers(await demo.roster());
+      setOffset(Date.parse(data.server_now) - Date.now());
+    } catch (e) { if (attempt === demoAttempt.current) setError(friendlyError(e)); }
+    finally { setBusy(false); }
+  }
+  async function demoStep(id?: string | null) {
+    if (!demoSession || busy || mobileView) return;
+    setBusy(true); setError(""); setSelected(null); setUsingShot(false); setPanel(null);
+    try {
+      if (id === undefined) await demoSession.next(); else await demoSession.view(id);
+      await refresh();
+    } catch (e) { setError(friendlyError(e)); }
+    finally { setBusy(false); }
+  }
+  function resetDemo() {
+    demoAttempt.current++;
+    setDemoSession(null); setDemoPlayers([]); setGame(null); setError(""); setPanel(null);
   }
   function open(p: Panel) {
     setRoomPin("");
@@ -643,7 +706,7 @@ export default function App() {
           </nav>
         </header>
 
-        {!code ? (
+        {demoOpen && mobileView ? <DemoMobileNotice onClose={home} /> : demoOpen && !demoSession ? <DemoSetup busy={busy} error={error} onStart={startDemo} onClose={home} /> : !code && !demoSession ? (
           <main className="home-main">
             <div className="hero">
               <div className="hero-copy">
@@ -681,6 +744,7 @@ export default function App() {
                     <Link size={19} /> Masaya katıl
                   </button>
                 </div>
+                <button className="button secondary demo-entry" onClick={openDemo}><Play size={19} />Botlarla demo · Adım adım izle</button>
                 <RoomAllowance
                   quota={quota}
                   offset={quotaOffset}
@@ -806,12 +870,13 @@ export default function App() {
           </main>
         ) : (
           <main className="game-main">
+            {demoSession && <DemoControls game={game} players={demoPlayers} busy={busy} onView={id => void demoStep(id)} onNext={() => void demoStep()} onReset={resetDemo} />}
             <div className="game-top">
               <button className="text-button" onClick={home}>
                 <ArrowLeft size={17} /> Ana sayfa
               </button>
               <span className="pill">
-                MASA <strong>{game.code}</strong>
+                {demoSession ? "DEMO MASASI" : <>MASA <strong>{game.code}</strong></>}
               </span>
               {game.round_number > 1 && <span className="pill">Rövanş · {game.round_number}. oyun</span>}
               {game.is_observer ? (
@@ -828,8 +893,8 @@ export default function App() {
                 </button>
               )}
             </div>
-            <HostManagement game={game} busy={busy} onTransfer={(id) => act("transfer", id)} />
-            <RoomControls game={game} busy={busy} onReturn={() => act("return_lobby")} onClose={() => act("close_room")} />
+            {!demoSession && <HostManagement game={game} busy={busy} onTransfer={(id) => act("transfer", id)} />}
+            {!demoSession && <RoomControls game={game} busy={busy} onReturn={() => act("return_lobby")} onClose={() => act("close_room")} />}
             {game.is_observer && (
               <div className="observer-notice">
                 <Monitor size={18} />
@@ -855,7 +920,7 @@ export default function App() {
                     : `${game.day}. GÜN · ${game.phase === "night" ? "İYİ GECELER" : "KÖY MEYDANI"}`}
               </span>
               <h1>{phaseText[game.phase]}</h1>
-              {game.phase !== "lobby" && game.phase !== "finished" && !(game.speech && !game.speech.group && ["intro", "day"].includes(game.phase)) && (
+              {!demoSession && game.phase !== "lobby" && game.phase !== "finished" && !(game.speech && !game.speech.group && ["intro", "day"].includes(game.phase)) && (
                 <Timer
                   ends={game.ends_at}
                   offset={offset}
@@ -868,7 +933,7 @@ export default function App() {
             <PersonalObjective game={game} />
             <VoicePanel game={game} voice={voice} />
             {game.phase !== "lobby" && <SpectatorList game={game} busy={busy} onToggle={id => void act("spectator", id)} onKick={id => void act("kick", id)} />}
-            {["intro", "day", "runoff"].includes(game.phase) && (
+            {!demoSession && ["intro", "day", "runoff"].includes(game.phase) && (
               <EarlyAdvance
                 game={game}
                 busy={busy}
@@ -945,7 +1010,7 @@ export default function App() {
                             <ConnectionStatus player={p} offset={offset} />
                           </span>
                           <SpectatorAction game={game} player={p} busy={busy} onToggle={id => void act("spectator", id)} />
-                          <KickButton game={game} player={p} busy={busy} onKick={(id) => act("kick", id)} />
+                          {!demoSession && <KickButton game={game} player={p} busy={busy} onKick={(id) => act("kick", id)} />}
                         </div>
                       ))}
                     </div>
@@ -1006,7 +1071,7 @@ export default function App() {
                           : "Köy birazdan uyanıyor!"}
                       </h2>
                       {game.phase === "countdown" ? (
-                        <Countdown ends={game.ends_at} offset={offset} />
+                        demoSession ? <p>İleri dediğinde köy uyanacak.</p> : <Countdown ends={game.ends_at} offset={offset} />
                       ) : (
                         <p>
                           Bu ekranda rol açılmaz. Oyuncular kendi ekranlarına
@@ -1043,7 +1108,7 @@ export default function App() {
                           </p>
                         </>
                       ) : (
-                        <Countdown ends={game.ends_at} offset={offset} />
+                        demoSession ? <p>İleri dediğinde köy uyanacak.</p> : <Countdown ends={game.ends_at} offset={offset} />
                       )}
                       <span className="small muted">
                         <EyeOff size={14} /> Ekranını diğer oyunculardan gizle.
@@ -1096,11 +1161,11 @@ export default function App() {
                       ))}
                     </div>
                     {game.role_details_hidden && <p className="observer-privacy">İzleyici olarak karakter rollerini ve perde arkasındaki gizli hamleleri göremezsin.</p>}
-                    <RematchControls game={game} busy={busy} onRematch={() => act("rematch")} onNewTable={() => {
+                    {demoSession ? <button className="button primary" onClick={resetDemo}>Yeni demo senaryosu kur</button> : <RematchControls game={game} busy={busy} onRematch={() => act("rematch")} onNewTable={() => {
                         home();
                         setCfg({ ...defaults, theme });
                         open("create");
-                      }} />
+                      }} />}
                   </section>
                 ) : (
                   <div className="play-layout">
@@ -1132,7 +1197,7 @@ export default function App() {
                                 : "Birazdan köy yeniden hareketlenecek."}
                           </p>
                         </div>
-                      ) : ["hunter", "mayor_decision"].includes(game.phase) ? <><RoleEffect kind={game.phase === "hunter" ? "hunter" : "mayor"} /><h2>{game.phase === "hunter" ? "Avcı son hedefini seçiyor." : "Muhtar eşit adaylar arasından karar veriyor."}</h2><p>{game.my_turn ? "Aşağıdan hedefini seçip onayla." : "Karar bekleniyor."} {game.phase === "hunter" ? "30 saniyede seçim gelmezse rastgele hedef seçilir." : "30 saniyede karar gelmezse tekrar tartışılır."}</p></> : game.phase === "night" ? (
+                      ) : ["hunter", "mayor_decision"].includes(game.phase) ? <><RoleEffect kind={game.phase === "hunter" ? "hunter" : "mayor"} /><h2>{game.phase === "hunter" ? "Avcı son hedefini seçiyor." : "Muhtar eşit adaylar arasından karar veriyor."}</h2><p>{game.my_turn ? "Aşağıdan hedefini seçip onayla." : "Karar bekleniyor."} {demoSession ? "İleri dediğinde eksik kararı bot tamamlar." : game.phase === "hunter" ? "30 saniyede seçim gelmezse rastgele hedef seçilir." : "30 saniyede karar gelmezse tekrar tartışılır."}</p></> : game.phase === "night" && (game.rules_version || 2) >= 3 ? <NightChoices key={`${game.code}:${game.round_number}:${game.seq}:${game.me?.id || "observer"}`} game={game} busy={busy} offset={offset} onSubmit={submitNight} manual={!!demoSession} /> : game.phase === "night" ? (
                         <>
                           <div className="night-heading">
                             <Moon size={27} />
@@ -1323,7 +1388,7 @@ export default function App() {
                             {p.alive ? <><span className={`presence-dot ${p.online ? "" : "away"}`} title={p.online ? "Bağlı" : "Bağlantı bekleniyor"} /><ConnectionStatus player={p} offset={offset} /></> : <span className="small">{p.eliminated_by === "disconnected" ? "Bağlantı · elendi" : p.eliminated_by === "kicked" ? "Çıkarıldı" : "Elendi"}</span>}
                           </span>
                           {p.alive && p.silenced && ["day", "runoff"].includes(game.phase) && <span className="pill">Sessiz {game.is_host && <button disabled={busy} onClick={() => act("silence_breach", p.id)}>Konuştu</button>}</span>}
-                          <KickButton game={game} player={p} busy={busy} onKick={(id) => act("kick", id)} />
+                          {!demoSession && <KickButton game={game} player={p} busy={busy} onKick={(id) => act("kick", id)} />}
                         </div>
                       ))}
                       {game.me ? (

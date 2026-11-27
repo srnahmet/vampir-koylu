@@ -3,13 +3,13 @@ import { Check, Moon } from "lucide-react";
 import { type Game } from "./domain";
 import { RoleEffect } from "./RoleEffect";
 
-export function NightChoices({ game, busy, offset, onSubmit }: { game: Game; busy: boolean; offset: number; onSubmit: (kind: string, targets: string[]) => void }) {
+export function NightChoices({ game, busy, offset, onSubmit, manual = false }: { game: Game; busy: boolean; offset: number; onSubmit: (kind: string, targets: string[]) => void; manual?: boolean }) {
   const [kind, setKind] = useState(game.night_choice?.kind === "bite" ? "bite" : game.night_action || "kill");
   const [targets, setTargets] = useState<string[]>(game.night_choice?.targets || []);
   const [now, setNow] = useState(Date.now());
-  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(timer); }, []);
+  useEffect(() => { if (manual) return; const timer = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(timer); }, [manual]);
   const inGrace = !!game.night_base_ends_at && now + offset >= Date.parse(game.night_base_ends_at);
-  const expired = now + offset >= Date.parse(game.ends_at);
+  const expired = !manual && now + offset >= Date.parse(game.ends_at);
   const max = kind === "swap" || (kind === "kill" && game.attack_number === 2) ? 2 : 1;
   const required = kind === "swap" ? 2 : 1;
   const alive = game.players.filter(p => p.alive);
@@ -19,9 +19,9 @@ export function NightChoices({ game, busy, offset, onSubmit }: { game: Game; bus
   }
   return <div className="shared-night">
     <div className="night-heading"><Moon size={27} /><h2>Herkes aynı gecede karar veriyor.</h2></div>
-    <p className="stage-description">Gece yetenekleri aynı anda seçilir. Seçim yapmak zorunda değilsin; pas geçebilir veya süreyi bekleyebilirsin.</p>
+    <p className="stage-description">Gece yetenekleri aynı anda seçilir. {manual ? "Seçimini dene veya pas geç. Gece yalnızca İleri dediğinde çözülür." : "Seçim yapmak zorunda değilsin; pas geçebilir veya süreyi bekleyebilirsin."}</p>
     <div className={`night-window ${inGrace ? "grace" : ""}`} role="status">
-      {inGrace ? `Ek süre: eksik seçimler için en fazla ${game.settings.night_grace_seconds} saniye. Ardından mevcut hamlelerle sabah olacak.` : `${game.settings.night_seconds} saniye ana süre + en fazla ${game.settings.night_grace_seconds} saniye ek süre. Herkes hazırsa ana süre sonunda çözülür.`}
+      {manual ? "Demo duraklatıldı. Diğer rollere geçip seçimlerini de yapabilirsin; süren sınırsız." : inGrace ? `Ek süre: eksik seçimler için en fazla ${game.settings.night_grace_seconds} saniye. Ardından mevcut hamlelerle sabah olacak.` : `${game.settings.night_seconds} saniye ana süre + en fazla ${game.settings.night_grace_seconds} saniye ek süre. Herkes hazırsa ana süre sonunda çözülür.`}
     </div>
     {game.my_turn ? <>
       {game.night_action === "swap" && <><RoleEffect kind="wizard" small /><p>İki farklı oyuncu seç. Vampir takımından biriyle temas edersen ölürsün. Bu hak oyun boyunca bir kez kullanılabilir.</p></>}

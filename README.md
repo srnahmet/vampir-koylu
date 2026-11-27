@@ -50,6 +50,15 @@ Ses açıkken internet, pil, işlemci ve Supabase sorgu kullanımı artar. Her k
 
 ## Çalıştırma
 
+### Botlarla adım adım demo
+
+Ana sayfadaki **Botlarla demo · Adım adım izle** düğmesiyle 4–16 botun isimlerini ve rollerini seçebilirsiniz. Tek vampir, iki vampir veya Alfa/Büyücü hazır senaryoları vardır. **İleri** eksik hamleleri botlara yaptırıp yalnızca bir aşama ilerletir; gerçek zaman oyunu ilerletmez. Bakış açısı menüsünden yaşayan veya elenmiş her oyuncunun özel ekranına ve ortak paylaşım ekranına geçilebilir. Kaydedilen hamleler bakış açısı değişince korunur. Gece seçimleri, doktor kurtarışı, büyü, dönüşüm, oylama, zafer ve oyun özeti gerçek `supabase/setup.sql` kurallarıyla çözülür.
+
+Demo tarayıcı belleğinde çalışır, gerçek Supabase masası kurmaz ve masa hakkı tüketmez. Oyun motorunun dosyaları ilk başlatmada yüklenir. Sayfa yenilenince demo sıfırlanır. **760 piksel ve altındaki mobil görünümde** kullanılamadığına ilişkin açıklama çıkar; pencere tekrar genişletildiğinde aynı demo devam eder. Yerel denemeye doğrudan `?demo=1` ile de girilebilir.
+
+Ortak gece ekranındaki seçim alanı, hem tek hem çift vampirli oyunlarda `NightChoices` üzerinden açılır; doktor, şaman, büyücü ve Alfa yetenekleri de aynı akışı kullanır. Eski kurallarla başlamış oyunlar kendi seçim ekranıyla devam eder. Bu ön yüz düzeltmesi için yeni bir SQL geçişi gerekmez.
+
+
 Node.js 22 veya 24 ile:
 
 ```sh
